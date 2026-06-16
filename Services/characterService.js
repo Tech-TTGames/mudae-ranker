@@ -140,6 +140,14 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 			initialText = initialText.replace(/\[([1-9]|1[12]):([0-5][0-9]) [AP]M\] BOTMuda(e|maid)( \d+)?: /gi, '');
 			initialText = initialText.replace(/Muda(e|maid \d+)BOTToday at ([1-9]|1[12]):([0-5][0-9]) [AP]M/gi, '');
 
+			// If the text does not contain any Mudae series headers (e.g. "Series Name - 1/4"),
+			// wrap it all in a default header so it parses sequentially without breaking order.
+			var hasSeriesHeaders = /(.*) (- | +)\d+\/\d+/.test(initialText);
+			if (!hasSeriesHeaders) {
+				initialText = "Unknown Series - 1/1\n" + initialText;
+			}
+			// ---------------------------
+
 			// Clear the character counts on series and put a '$' before the series name for splitting
 			initialText = initialText.replace(/(.*) (- | +)\d+\/\d+/g, '$$$1');
 			
@@ -507,7 +515,7 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 			service.characters.push(character);
 		},
 
-		mergeCharacter: function (character)
+mergeCharacter: function (character)
 		{
 			// This linear search won't be pretty, but it'll have to do for now
 			var characterArray = service.characters;
@@ -516,17 +524,26 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 			for (var i = 0; i < total; i++)
 			{
 				var matchCharacter = characterArray[i];
-				
-				if (matchCharacter.minimizedName === character.minimizedName && matchCharacter.series === character.series)
+
+				// MATCH CONDITION: Allow match if the existing or incoming character is from a series-less import
+				if (matchCharacter.minimizedName === character.minimizedName &&
+				   (matchCharacter.series === character.series || matchCharacter.series === 'Unknown Series' || character.series === 'Unknown Series'))
 				{
-					// Do not use Object.assign here since we don't want to override all properties
-					// Right now the only merging we're going to do is to merge the originalName due to it not existing when DM and I first processed our harems
-					// In the future this could be used for additional upgrades or some other merge functionality
+					// DATA EXPANSION: Upgrade series name if we now have the real one
+					if (matchCharacter.series === 'Unknown Series' && character.series !== 'Unknown Series') {
+						matchCharacter.series = character.series;
+					}
+
 					matchCharacter.originalName = character.originalName;
+
+					// Upgrade image if the new paste has an image and the old one doesn't
+					if ((matchCharacter.imageUrl == null || matchCharacter.imageUrl === '') && character.imageUrl) {
+						matchCharacter.imageUrl = character.imageUrl;
+					}
 
 					if (matchCharacter.imageUrl != null && matchCharacter.imageUrl != '')
 					{
-						return { code: MergeCode.NoAction, match: matchCharacter }; // Should probably turn the codes into an Enum
+						return { code: MergeCode.NoAction, match: matchCharacter };
 					}
 					
 					return { code: MergeCode.Lookup, match: matchCharacter };
