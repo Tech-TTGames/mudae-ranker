@@ -505,6 +505,7 @@ button:disabled {
 
 body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) {
     position: relative;
+    z-index: 1;
 }
 
 /* 2. Float the note in the top-right corner (ONLY on unexpanded thumbnails) */
