@@ -370,7 +370,10 @@ button:disabled {
     padding: 10px 5px;
 }
 .GhostMode .CharacterThumb:not(:hover):not(.CharacterFull):not(.NewCharacterCard) {
-    min-height: 80px;
+    aspect-ratio: 225 / 350;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
