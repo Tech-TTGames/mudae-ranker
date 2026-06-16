@@ -357,3 +357,20 @@ button:disabled {
     padding-bottom: 10px;
     margin-bottom: 15px;
 }
+
+/* --- Ghost Mode (Performance Toggle) --- */
+.GhostMode .CharacterThumb:not(:hover):not(.CharacterFull):not(.NewCharacterCard) img {
+    display: none;
+}
+.GhostMode .CharacterThumb:not(:hover):not(.CharacterFull):not(.NewCharacterCard) .CharacterName {
+    display: block;
+    font-size: 110%;
+    text-align: center;
+    margin: auto;
+    padding: 10px 5px;
+}
+.GhostMode .CharacterThumb:not(:hover):not(.CharacterFull):not(.NewCharacterCard) {
+    min-height: 80px;
+    align-items: center;
+    justify-content: center;
+}
