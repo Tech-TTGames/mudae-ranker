@@ -186,6 +186,14 @@ body
 	cursor: pointer;
 }
 
+.RankingContainer .CharacterThumb.CharacterFull img
+{
+	width: 225px;
+	height: 350px;
+	object-fit: cover;
+	border-radius: 6px;
+}
+
 .RankMode .CharacterClose
 {
 	display: none;
