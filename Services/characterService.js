@@ -434,7 +434,7 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 			
 			if (chars[0]['originalName'] === undefined)
 			{
-				Utilities.showError('Looks like your characters don\'t have their original names stored. Run another $mmas and Parse Input so it can merge in the proper information, and then try again.', true);
+				Utilities.showError('Looks like your characters don\'t have their original names stored. Run another $mmasi- and Parse Input so it can merge in the proper information, and then try again.', true);
 				return;
 			}
 

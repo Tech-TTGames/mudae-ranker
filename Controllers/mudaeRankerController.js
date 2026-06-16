@@ -7,6 +7,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	$scope.getRightCompare = Characters.getRightCompare;
 	$scope.getRankingInProgress = Characters.getRankingInProgress;
 	$scope.hasCharacters = Characters.hasCharacters;
+	$scope.getRankProgress = function() { return PreferenceList.currentIndex + " / " + PreferenceList.size; }
 
 	// Undo & Ghost Mode hooks
 	$scope.undoRank = Characters.undoRank;

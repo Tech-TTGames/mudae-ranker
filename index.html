@@ -50,7 +50,7 @@
 	<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-message-box@3.1.0/dist/messagebox.min.css"> <!-- https://gasparesganga.com/labs/jquery-message-box/ -->
 </head>
 <body data-ng-app="mudaeRanker" data-ng-controller="mudaeRankerController" data-ng-attr-class="{{ getModeClassName() }} {{ ghostMode ? 'GhostMode' : '' }}" data-mudr-body>
-	<textarea id="InputField" class="InputField" placeholder="Paste a previous export or results from $mmas here" ></textarea>
+	<textarea id="InputField" class="InputField" placeholder="Paste a previous export or results from $mmasi- here" ></textarea>
 	<textarea id="OutputField" class="OutputField" placeholder="Exported results will show up here" ></textarea>
 	<br />
 	<div style="text-align: center">
@@ -105,6 +105,7 @@
 	<div id="RankingContainer" class="RankingContainer">
 		<div class="RankingContainerTitle">
 			Which one is better?
+			<span>{{ getRankProgress() }}</span>
 			<button style="float: right; margin-left: 15px;" data-ng-click="undoRank()">&#9100; Undo</button>
 			<span class="RankingContainerClose" data-mudr-ranking-stop>&#10062;</span>
 		</div>
