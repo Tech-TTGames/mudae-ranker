@@ -8,7 +8,13 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	$scope.getRankingInProgress = Characters.getRankingInProgress;
 	$scope.hasCharacters = Characters.hasCharacters;
 
-	// Centralized save function
+	// Undo & Ghost Mode hooks
+	$scope.undoRank = Characters.undoRank;
+	$scope.ghostMode = false;
+	$scope.toggleGhostMode = function() {
+		$scope.ghostMode = !$scope.ghostMode;
+	};
+
 	function saveToLocalStorage() {
 		var chars = Characters.getCharacters();
 		if (chars && chars.length > 0) {
@@ -16,8 +22,8 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 				appState: {
 					rankingInProgress: Characters.getRankingInProgress(),
 					preferenceState: PreferenceList.getState()
-				}, 
-				characters: chars 
+				},
+				characters: chars
 			};
 			localStorage.setItem('mudaeRankerCache', angular.toJson(exportData));
 		} else {
@@ -26,10 +32,10 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	}
 
 	$scope.sortableConfig = {
-		onEnd: function (event)
-		{
+		onEnd: function (event) {
 			Characters.dragAndDropSortEnd(event);
-			saveToLocalStorage(); // Trigger 1: Save when a card is manually dragged
+			// Trigger 1: Save when a card is manually dragged
+			saveToLocalStorage();
 		}
 	};
 
@@ -66,10 +72,18 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	document.addEventListener('keydown', function(event) {
 		if ($scope.getModeClassName() === 'RankMode') {
 			var validKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
-			
+
+			// Handle Ctrl+Z for Undo
+			if (event.ctrlKey && event.key === 'z') {
+				event.preventDefault();
+				$scope.$applyAsync(function() {
+					$scope.undoRank();
+				});
+				return;
+			}
+
 			if (validKeys.includes(event.key)) {
-				event.preventDefault(); 
-				
+				event.preventDefault();
 				$scope.$applyAsync(function() {
 					if (event.key === "ArrowLeft") Characters.selectLeft();
 					else if (event.key === "ArrowRight") Characters.selectRight();
@@ -79,5 +93,4 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			}
 		}
 	});
-
 }]);

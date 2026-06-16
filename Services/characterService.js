@@ -638,7 +638,6 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 		_rankingContainer: null,
 		_currentLeftIndex: -1,
 		_currentRightIndex: -1,
-		leftCompare: null,
 		rankingInProgress: false,
 		
 		getRankingInProgress: function ()
@@ -646,57 +645,72 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 			return service.rankingInProgress;
 		},
 		
-		getLeftCompare: function ()
-		{
+		_undoStack: [],
+
+		_saveUndoState: function () {
+			if (service._undoStack.length >= 50) {
+				service._undoStack.shift(); // Prevent memory bloat, keep last 50 actions
+			}
+			service._undoStack.push({
+				rankedCharacters: angular.copy(service._rankedCharacters),
+				discardedCharacters: angular.copy(service._discardedCharacters),
+				prefState: angular.copy(PreferenceList.getState())
+			});
+		},
+
+		undoRank: function () {
+			if (service._undoStack.length > 0) {
+				var prevState = service._undoStack.pop();
+				service._rankedCharacters = prevState.rankedCharacters;
+				service._discardedCharacters = prevState.discardedCharacters;
+				PreferenceList.setState(prevState.prefState);
+				service.presentCardsForComparison();
+				return true;
+			}
+			return false;
+		},
+
+		leftCompare: null,
+
+		getLeftCompare: function () {
 			return service.leftCompare;
 		},
-		
-		selectLeft: function ()
-		{
-			service.rankingInProgress = true;
 
+		selectLeft: function () {
+			service._saveUndoState();
+			service.rankingInProgress = true;
 			PreferenceList.addAnswer(-1);
 			service.presentCardsForComparison();
-
-			//console.log(service.getDebugInfo(true));
 		},
-		
-		skipLeft: function ()
-		{
+
+		skipLeft: function () {
+			service._saveUndoState();
 			service.rankingInProgress = true;
-
 			var skippedCharacter = service._rankedCharacters.splice(service._currentLeftIndex, 1).pop();
-
-			skippedCharacter.skip = true; // If the checkbox was actually working properly, this wouldn't really be necessary, but oh well
+			skippedCharacter.skip = true;
 			service._discardedCharacters.push(skippedCharacter);
 			PreferenceList.addAnswer(0);
 			service.presentCardsForComparison();
 		},
 
 		rightCompare: null,
-		
-		getRightCompare: function ()
-		{
+
+		getRightCompare: function () {
 			return service.rightCompare;
 		},
-		
-		selectRight: function ()
-		{
-			service.rankingInProgress = true;
 
+		selectRight: function () {
+			service._saveUndoState();
+			service.rankingInProgress = true;
 			PreferenceList.addAnswer(1);
 			service.presentCardsForComparison();
-
-			//console.log(service.getDebugInfo(true));
 		},
-		
-		skipRight: function ()
-		{
-			service.rankingInProgress = true;
 
+		skipRight: function () {
+			service._saveUndoState();
+			service.rankingInProgress = true;
 			var skippedCharacter = service._rankedCharacters.splice(service._currentRightIndex, 1).pop();
-			
-			skippedCharacter.skip = true; // If the checkbox was actually working properly, this wouldn't really be necessary, but oh well
+			skippedCharacter.skip = true;
 			service._discardedCharacters.push(skippedCharacter);
 			PreferenceList.addAnswer(0);
 			service.presentCardsForComparison();
