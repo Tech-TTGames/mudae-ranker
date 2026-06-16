@@ -457,6 +457,13 @@ button:disabled {
 .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterName { width: 40%; }
 .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterSeries { width: 40%; }
 
+/* --- Ensure Notes look balanced inside the Ranking Modal --- */
+.RankingContainer .CharacterThumb.CharacterFull .CharacterNote {
+    margin-bottom: 8px;
+    margin-top: 4px;
+    display: inline-block; /* Keeps the badge shape */
+}
+
 /* --- Mobile Responsiveness --- */
 @media (max-width: 768px) {
     /* 1. Make text boxes stack and fill screen */
@@ -494,4 +501,28 @@ button:disabled {
             width: 160px;
         }
     }
+}
+
+body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) {
+    position: relative;
+}
+
+/* 2. Float the note in the top-right corner (ONLY on unexpanded thumbnails) */
+body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) .CharacterNote {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    max-width: calc(100% - 12px);
+    box-sizing: border-box;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin: 0;
+    z-index: 10;
+    background-color: rgba(30, 31, 34, 0.85);
+    border: 1px solid #4e5058;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    border-radius: 6px;
+    padding: 2px 6px;
 }

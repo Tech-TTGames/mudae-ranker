@@ -123,7 +123,7 @@
 					<span class="CharacterNameText">{{ getLeftCompare().name }}</span>
 				</div>
 				<div class="CharacterSeries">{{ getLeftCompare().series }}</div>
-				<div class="CharacterNote" data-ng-show="c.note">{{ getLeftCompare().note }}</div>
+				<div class="CharacterNote" data-ng-show="getLeftCompare().note">{{ getLeftCompare().note }}</div>
 				<img data-ng-src="{{ getLeftCompare().imageUrl }}" />
 				<div class="CharacterURL">
 					<label>URL: <input type="text" value="{{ getLeftCompare().imageUrl }}" data-mudr-left-compare-url /></label>
@@ -141,7 +141,7 @@
 					<span class="CharacterNameText">{{ getRightCompare().name }}</span>
 				</div>
 				<div class="CharacterSeries">{{ getRightCompare().series }}</div>
-				<div class="CharacterNote" data-ng-show="c.note">{{ getRightCompare().note }}</div>
+				<div class="CharacterNote" data-ng-show="getRightCompare().note">{{ getRightCompare().note }}</div>
 				<img data-ng-src="{{ getRightCompare().imageUrl }}" />
 				<div class="CharacterURL">
 					<label>URL: <input type="text" value="{{ getRightCompare().imageUrl }}" data-mudr-right-compare-url /></label>
