@@ -140,6 +140,9 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 			initialText = initialText.replace(/\[([1-9]|1[12]):([0-5][0-9]) [AP]M\] BOTMuda(e|maid)( \d+)?: /gi, '');
 			initialText = initialText.replace(/Muda(e|maid \d+)BOTToday at ([1-9]|1[12]):([0-5][0-9]) [AP]M/gi, '');
 
+			// Remove angle brackets < > surrounding Discord URLs
+			initialText = initialText.replace(/<(https?:\/\/[^>]+)>/gi, '$1');
+
 			// If the text does not contain any Mudae series headers (e.g. "Series Name - 1/4"),
 			// wrap it all in a default header so it parses sequentially without breaking order.
 			var hasSeriesHeaders = /(.*) (- | +)\d+\/\d+/.test(initialText);
@@ -164,32 +167,46 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 
 				var charactersLength = seriesData.length;
 				var lookupRequired = false;
-				
+
 				for (var j = 0; j < charactersLength; j++)
 				{
-					var characterString = seriesData[j];
-					// Strip off the image url and any comments
-					var originalName = characterString.replace(/ - https:.*/i, '').replace(/(?: \| .*)?/gi, '').trim();
+					var characterString = seriesData[j].trim();
+
+					// 1. Separate the Image URL from the rest of the string safely
 					var imageURLIndex = characterString.lastIndexOf(' - https:');
 					var characterImage = null;
-					
+					var nameAndNotePart = characterString;
+
 					if (imageURLIndex > 0)
 					{
-						characterImage = characterString.substring(imageURLIndex + 3).trim();
+					   characterImage = characterString.substring(imageURLIndex + 3).trim();
+					   nameAndNotePart = characterString.substring(0, imageURLIndex).trim();
 					}
-					
+
+					// 2. Safely extract the note using the FIRST pipe, leaving the name intact
+					var noteText = '';
+					var firstPipeIndex = nameAndNotePart.indexOf(' | ');
+					if (firstPipeIndex !== -1)
+					{
+						noteText = nameAndNotePart.substring(firstPipeIndex + 3).trim();
+						nameAndNotePart = nameAndNotePart.substring(0, firstPipeIndex).trim();
+					}
+
+					// 3. Finalize the names
+					var originalName = nameAndNotePart;
 					var characterName = originalName.replace(/(?: \([A-Z]+\))?/gi, '').trim();
-					
-					var character = { 
+
+					var character = {
 						className: 'CharacterThumb',
-						imageUrl: characterImage, 
+						imageUrl: characterImage,
 						minimizedName: Utilities.minimizeName(characterName),
-						name: characterName, 
+						name: characterName,
 						originalName: originalName,
-						series: seriesName, 
-						skip: false 
+						series: seriesName,
+						note: noteText,
+						skip: false
 					};
-					
+
 					if (mergeCharacters)
 					{
 						var mergeResults = service.mergeCharacter(character);
@@ -532,6 +549,11 @@ mergeCharacter: function (character)
 					// DATA EXPANSION: Upgrade series name if we now have the real one
 					if (matchCharacter.series === 'Unknown Series' && character.series !== 'Unknown Series') {
 						matchCharacter.series = character.series;
+					}
+
+					// DATA EXPANSION: Update the note if the new paste has one
+					if (character.note && character.note !== '') {
+						matchCharacter.note = character.note;
 					}
 
 					matchCharacter.originalName = character.originalName;
