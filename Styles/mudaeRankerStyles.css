@@ -504,11 +504,9 @@ button:disabled {
 }
 
 body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) {
-    position: relative;
-    z-index: 1;
+	position: relative;
 }
 
-/* 2. Float the note in the top-right corner (ONLY on unexpanded thumbnails) */
 body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) .CharacterNote {
     position: absolute;
     top: 6px;
@@ -519,7 +517,6 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
     overflow: hidden;
     text-overflow: ellipsis;
     margin: 0;
-    z-index: 10;
     background-color: rgba(30, 31, 34, 0.85);
     border: 1px solid #4e5058;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
