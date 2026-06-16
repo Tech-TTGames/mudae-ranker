@@ -14,7 +14,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		if (chars && chars.length > 0) {
 			var exportData = {
 				appState: {
-					rankingInProgress: false, // Hardcoded to false since we only save when stopping
+					rankingInProgress: Characters.getRankingInProgress(),
 					preferenceState: PreferenceList.getState()
 				}, 
 				characters: chars 
@@ -29,11 +29,10 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		onEnd: function (event)
 		{
 			Characters.dragAndDropSortEnd(event);
-			saveToLocalStorage(); // Save when a card is manually dragged and dropped
+			saveToLocalStorage(); // Trigger 1: Save when a card is manually dragged
 		}
 	};
 
-	// 1. Auto-Load on Startup
 	$timeout(function() {
 		var cachedSession = localStorage.getItem('mudaeRankerCache');
 		if (cachedSession) {
@@ -45,20 +44,29 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		}
 	}, 500);
 
-	// 2. Save on "X" (When ranking mode is stopped)
+	// Trigger 2: Save immediately when "Parse Input" adds characters (or when you delete one)
 	$scope.$watch(function() {
-		return Characters.getRankingInProgress();
+		return $scope.characters.length;
+	}, function(newVal, oldVal) {
+		if (newVal !== oldVal) {
+			saveToLocalStorage();
+		}
+	});
+
+	// Trigger 3: Save when Ranking Mode is closed (Clicking "X" or finishing all comparisons)
+	$scope.$watch(function() {
+		return Characters.getModeClassName();
 	}, function(newValue, oldValue) {
-		// If ranking was in progress (true) and is now stopped (false)
-		if (oldValue === true && newValue === false) {
+		if (oldValue === 'RankMode' && newValue === 'EditMode') {
 			saveToLocalStorage();
 		}
 	});
 
 	// --- HOTKEYS ---
 	document.addEventListener('keydown', function(event) {
-		if ($scope.getModeClassName() === 'RankMode' && Characters.getRankingInProgress()) {
+		if ($scope.getModeClassName() === 'RankMode') {
 			var validKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+			
 			if (validKeys.includes(event.key)) {
 				event.preventDefault(); 
 				
