@@ -377,3 +377,89 @@ button:disabled {
     justify-content: center;
     overflow: hidden;
 }
+
+/* --- List View (Compact Directory Mode) --- */
+.ListMode .CharacterCardContainer {
+    display: block;
+    width: 100%;
+    max-width: 800px;
+    margin: auto;
+}
+
+/* Hover condition removed: Rows remain rigid when mouse passes over */
+.ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) {
+    display: flex;
+    flex-direction: row;
+    width: 100% !important;
+    aspect-ratio: auto;
+    min-height: 40px;
+    padding: 8px 15px;
+    margin: 4px 0;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Image permanently hidden in list view unless explicitly clicked */
+.ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) img {
+    display: none;
+}
+
+.ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterName {
+    display: block;
+    font-size: 110%;
+    text-align: left;
+    margin: 0;
+    width: 50%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterSeries {
+    display: block;
+    font-size: 90%;
+    color: #949ba4;
+    text-align: right;
+    width: 50%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+/* --- Mobile Responsiveness --- */
+@media (max-width: 768px) {
+    /* 1. Make text boxes stack and fill screen */
+    .InputField, .OutputField {
+        width: 90%;
+        height: 6em;
+    }
+
+    /* 2. Resize Grid Cards for Touch (3-4 per row instead of 20) */
+    .CharacterThumb {
+        width: 30%;
+        min-height: 120px;
+    }
+
+    /* 3. Ranking Modal Overhauls */
+    .RankingContainer {
+        width: 95%;
+        padding: 10px;
+        max-height: 95vh;
+        overflow-y: auto;
+    }
+
+    /* 4. Stack Comparison Cards Vertically on Portrait Phones */
+    @media (orientation: portrait) {
+        .RankingCardContainer {
+            flex-direction: column;
+            align-items: center;
+        }
+        .RankingContainer .CharacterThumb.CharacterFull {
+            max-width: 90%;
+            margin-bottom: 15px;
+        }
+        .RankingContainer .CharacterThumb.CharacterFull img {
+            height: 250px;
+            width: 160px;
+        }
+    }
+}

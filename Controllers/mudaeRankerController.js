@@ -9,11 +9,20 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	$scope.hasCharacters = Characters.hasCharacters;
 	$scope.getRankProgress = function() { return PreferenceList.currentIndex + " / " + PreferenceList.size; }
 
-	// Undo & Ghost Mode hooks
+	// Undo, Ghost Mode, and List View hooks
 	$scope.undoRank = Characters.undoRank;
+
 	$scope.ghostMode = false;
+	$scope.listMode = false;
+
 	$scope.toggleGhostMode = function() {
 		$scope.ghostMode = !$scope.ghostMode;
+		if ($scope.ghostMode) $scope.listMode = false; // Turn off List if Ghost is turned on
+	};
+
+	$scope.toggleListMode = function() {
+		$scope.listMode = !$scope.listMode;
+		if ($scope.listMode) $scope.ghostMode = false; // Turn off Ghost if List is turned on
 	};
 
 	function saveToLocalStorage() {

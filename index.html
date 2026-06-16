@@ -3,6 +3,7 @@
 <head>
 	<meta charset="utf-8"/>
 	<meta name="referrer" content="no-referrer" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 	<!-- Libraries -->
 	<script src="https://code.jquery.com/jquery-3.4.1.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.8/angular.js"></script>
@@ -49,7 +50,7 @@
 	<link rel="stylesheet" type="text/css" href="Styles/mudaeRankerStyles.css">
 	<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-message-box@3.1.0/dist/messagebox.min.css"> <!-- https://gasparesganga.com/labs/jquery-message-box/ -->
 </head>
-<body data-ng-app="mudaeRanker" data-ng-controller="mudaeRankerController" data-ng-attr-class="{{ getModeClassName() }} {{ ghostMode ? 'GhostMode' : '' }}" data-mudr-body>
+<body data-ng-app="mudaeRanker" data-ng-controller="mudaeRankerController" data-ng-attr-class="{{ getModeClassName() }} {{ ghostMode ? 'GhostMode' : '' }} {{ listMode ? 'ListMode' : '' }}" data-mudr-body>
 	<textarea id="InputField" class="InputField" placeholder="Paste a previous export or results from $mmasi- here" ></textarea>
 	<textarea id="OutputField" class="OutputField" placeholder="Exported results will show up here" ></textarea>
 	<br />
@@ -61,17 +62,22 @@
 		<button data-mudr-export-sort data-ng-disabled="!hasCharacters()">Generate Sort Commands</button>
 		<button data-mudr-export-clean>Clean Output</button>
 		<button data-ng-click="toggleGhostMode()">Toggle Ghost Mode</button>
+		<button data-ng-click="toggleListMode()">Toggle List View</button>
 		<button data-mudr-reset>Reset</button>
 	</div>
 	<br />
 	<br />
+
+	<div style="text-align: center; margin-bottom: 15px;">
+    	<input type="text" data-ng-model="searchQuery" placeholder="Search by character or series..." style="width: 50%; padding: 10px; border-radius: 6px; border: 1px solid #1e1f22; background-color: #1e1f22; color: #dbdee1;" />
+	</div>
 
 	<div class="CharacterThumb" data-mudr-new-thumb>
 		<div class="CharacterNew">&#127381;</div>
 	</div>
 
 	<div class="CharacterCardContainer" data-ng-sortable="sortableConfig">
-		<div data-ng-repeat="c in characters" data-ng-style="{'background-color': c.skip ? 'rgba(255,0,0,.9)' : ''}" data-ng-attr-class="{{ c.className }}" data-ng-attr-title="{{ c.series + ': ' + c.name}}" data-mudr-card-click data-character-index="{{ $index }}">
+		<div data-ng-repeat="c in characters | filter:searchQuery" data-ng-style="{'background-color': c.skip ? 'rgba(255,0,0,.9)' : ''}" data-ng-attr-class="{{ c.className }}" data-ng-attr-title="{{ c.series + ': ' + c.name}}" data-mudr-card-click data-character-index="{{ $index }}">
 			<div class="CharacterName">
 				<span class="CharacterNameText">{{ c.originalName }}</span><span class="CharacterClose" title="Close Card" data-mudr-card-close>&#10062;</span>
 			</div>
