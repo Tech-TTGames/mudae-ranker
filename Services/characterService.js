@@ -554,13 +554,19 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 		{
 			service.characters.length = 0; // Clean the existing array
 			service.characters.push(...newCharacters); // Push all new records. This can cause problems if newCharacters.length > 100000
-			$rootScope.$apply();
+
+			// Safely trigger a digest only if one isn't already running
+			if (!$rootScope.$$phase) {
+				$rootScope.$apply();
+			}
 		},
-		
+
 		updateCharacterImage: function (index, source)
 		{
 			service.characters[index].imageUrl = source;
-			$rootScope.$apply();
+			if (!$rootScope.$$phase) {
+				$rootScope.$apply();
+			}
 		},
 
 		minimizeActiveCard: function ()
@@ -765,9 +771,10 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 			service.presentCardsForComparison();
 		},
 
-		pauseRankMode: function ()
+	pauseRankMode: function ()
 		{
 			service._rankingContainer.style.display = '';
+			service.toggleMode(); // Move this up so the UI state updates instantly
 
 			if (service.rankingInProgress)
 			{
@@ -797,8 +804,6 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 
 				service.updateAll(newCharacters);
 			}
-
-			service.toggleMode();
 		},
 
 		resumeRankMode: function ()
@@ -830,10 +835,10 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 			service.presentCardsForComparison();
 		},
 
-		endRankMode: function ()
+	endRankMode: function ()
 		{
 			service._rankingContainer.style.display = '';
-			
+
 			var sortedIndices = PreferenceList.getOrder();
 			var total = sortedIndices.length;
 			var newCharacters = [];
@@ -845,10 +850,11 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 
 			newCharacters.push(...service._discardedCharacters);
 
-			service.updateAll(newCharacters);
+			// Flip the mode and flag BEFORE triggering the array update
 			service.toggleMode();
-
 			service.rankingInProgress = false;
+
+			service.updateAll(newCharacters);
 		},
 
 		presentCardsForComparison: function ()
