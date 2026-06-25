@@ -593,9 +593,17 @@ mergeCharacter: function (character)
 			}
 		},
 
-		updateAll: function (newCharacters)
+	updateAll: function (newCharacters)
 		{
 			service.characters.length = 0; // Clean the existing array
+
+			// Sanitize the incoming characters to remove lingering "Full" UI states
+			for (var i = 0; i < newCharacters.length; i++) {
+				if (newCharacters[i].className) {
+					newCharacters[i].className = newCharacters[i].className.replace(/ ?CharacterFull( )?/, '');
+				}
+			}
+
 			service.characters.push(...newCharacters); // Push all new records. This can cause problems if newCharacters.length > 100000
 
 			// Safely trigger a digest only if one isn't already running
