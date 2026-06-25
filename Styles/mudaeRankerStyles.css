@@ -560,6 +560,15 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
     color: white;
 }
 
+/* --- Link After Controls --- */
+.CharacterThumb .CharacterLink {
+    display: none;
+}
+
+.CharacterThumb.CharacterFull .CharacterLink {
+    display: block;
+}
+
 /* --- Fix: Keep Confirmation Popups on Top --- */
 .messagebox_overlay {
     z-index: 99999 !important;
