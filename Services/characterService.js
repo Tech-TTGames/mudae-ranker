@@ -779,7 +779,8 @@ mergeCharacter: function (character)
 
 				// Restore the main grid array
 				if (prevState.mainCharacters) {
-					service.characters = prevState.mainCharacters;
+					service.characters.length = 0;
+					service.characters.push(...prevState.mainCharacters);
 				}
 
 				// Branch logic: Are we undoing an Insert or a Merge Sort?
@@ -916,6 +917,23 @@ mergeCharacter: function (character)
 		{
 			service._rankingContainer.style.display = '';
 			service.toggleMode(); // Move this up so the UI state updates instantly
+
+			// Handle aborting an active Insert sequence
+			if (insertState.active) {
+				insertState.active = false;
+
+				// Return the current target and remaining queue to the end of the collection
+				if (insertState.target) {
+					service.characters.push(insertState.target);
+				}
+				if (insertState.queue && insertState.queue.length > 0) {
+					service.characters.push(...insertState.queue);
+				}
+
+				// Clear flags
+				service.characters.forEach(function(c) { c.insertFlag = false; });
+				return;
+			}
 
 			if (service.rankingInProgress)
 			{
@@ -1150,11 +1168,18 @@ mergeCharacter: function (character)
 		startInsertQueue: function(queueToInsert) {
 			if (!queueToInsert || queueToInsert.length === 0) return false;
 
+			service.minimizeActiveCard();
+			service._initializeRankMode();
+
 			// Temporarily pull the queued characters out of the main array
 			// so they aren't accidentally compared against themselves
-			service.characters = service.characters.filter(function(c) {
+			var remainingCharacters = service.characters.filter(function(c) {
 				return queueToInsert.indexOf(c) === -1;
 			});
+
+			// Mutate array in place so we don't break the controller's UI binding reference
+			service.characters.length = 0;
+			service.characters.push(...remainingCharacters);
 
 			insertState.queue = queueToInsert;
 			insertState.active = true;
@@ -1166,6 +1191,7 @@ mergeCharacter: function (character)
 			if (insertState.queue.length === 0) {
 				// Queue is empty. Clean up flags and signal the UI to close the modal.
 				insertState.active = false;
+				service.mode = Mode.Edit;
 				service.characters.forEach(function(c) { c.insertFlag = false; });
 
 				if (service._rankingContainer) {
