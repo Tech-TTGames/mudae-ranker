@@ -41,6 +41,14 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		}
 	}
 
+	var saveTimer = null;
+	$scope.saveState = function() {
+		if (saveTimer) $timeout.cancel(saveTimer);
+		saveTimer = $timeout(function() {
+			saveToLocalStorage();
+		}, 1000); // Waits 1 second after you stop typing to save
+	};
+
 	$scope.sortableConfig = {
 		onEnd: function (event) {
 			Characters.dragAndDropSortEnd(event);

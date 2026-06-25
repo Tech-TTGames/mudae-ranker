@@ -2,13 +2,17 @@ mudaeRanker.directive('mudrUrlInput', ['Characters', function(Characters) {
 	return {
 		restrict: 'A',
 		scope: false,
-		link: function(scope, element, attrs) {
+		link: function(scope, element) {
 			element.on('keyup', function(event) {
 				event.stopPropagation();
 			});
 
-			element.on('input', function(event) {
+			element.on('input', function() {
 				Characters.updateCharacterImage(scope.$index, element.val());
+
+				if (scope.saveState) {
+					scope.saveState();
+				}
 			});
 
 			element.on('click', function(event) {

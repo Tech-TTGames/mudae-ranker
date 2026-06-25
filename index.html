@@ -106,11 +106,11 @@
 				</button>
 			</div>
 			<div class="CharacterSkip">
-				<label data-mudr-skip-input><input type="checkbox" data-ng-model="c.skip" />Skip?</label><span class="CharacterDelete" title="Delete Character" data-mudr-card-delete>&#128465;</span>
+				<label data-mudr-skip-input><input type="checkbox" data-ng-model="c.skip" data-ng-change="saveState()" />Skip?</label><span class="CharacterDelete" title="Delete Character" data-mudr-card-delete>&#128465;</span>
 			</div>
 			<div class="CharacterLink" data-ng-show="c.skip" style="margin-top: 4px;">
 				<label style="font-size: 80%; color: #949ba4;">Link after:
-					<input type="text" data-ng-model="c.linkedTo" placeholder="Exact Character Name" style="width: 100%; box-sizing: border-box; background-color: #1e1f22; color: #dbdee1; border: 1px solid #4e5058; border-radius: 3px; padding: 2px 4px; margin-top: 2px;" />
+					<input type="text" data-ng-model="c.linkedTo" data-ng-change="saveState()" placeholder="Exact Character Name" style="width: 100%; box-sizing: border-box; background-color: #1e1f22; color: #dbdee1; border: 1px solid #4e5058; border-radius: 3px; padding: 2px 4px; margin-top: 2px;" />
 				</label>
 			</div>
 		</div>
