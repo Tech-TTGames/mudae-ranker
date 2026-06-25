@@ -671,6 +671,27 @@ mergeCharacter: function (character)
 			return finalArray;
 		},
 
+		reapplyLinks: function() {
+			var mainList = [];
+			var linkedList = [];
+
+			// Separate the characters into "anchors" and "followers"
+			service.characters.forEach(function(c) {
+				if (c.skip && c.linkedTo && c.linkedTo.trim() !== '') {
+					linkedList.push(c);
+				} else {
+					mainList.push(c);
+				}
+			});
+
+			// Run them through the engine we already built
+			var resolvedArray = service.resolveLinks(mainList, linkedList);
+
+			// Mutate in-place to preserve UI bindings
+			service.characters.length = 0;
+			service.characters.push(...resolvedArray);
+		},
+
 		updateCharacterImage: function (index, source)
 		{
 			service.characters[index].imageUrl = source;

@@ -52,6 +52,12 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	$scope.sortableConfig = {
 		onEnd: function (event) {
 			Characters.dragAndDropSortEnd(event);
+
+			// If we just dragged a card in Edit Mode, snap the linked characters to their targets
+			if (!Characters.getRankingInProgress()) {
+				Characters.reapplyLinks();
+			}
+
 			// Trigger 1: Save when a card is manually dragged
 			saveToLocalStorage();
 		}
