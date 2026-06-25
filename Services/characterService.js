@@ -274,6 +274,7 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 		{
 			Utilities.showSuccess('Done looking up characters from Anilist', true);
 			console.log('Interval Rejected (most likely this is due to it being cancelled, meaning the fetching is complete)');
+			$rootScope.$broadcast('charactersUpdated');
 		},
 
 		fetchSeries: function (seriesArray)

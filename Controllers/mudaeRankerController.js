@@ -11,9 +11,11 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 
 	// Undo, Ghost Mode, and List View hooks
 	$scope.undoRank = Characters.undoRank;
-
 	$scope.ghostMode = false;
 	$scope.listMode = false;
+
+	var saveTimer = null;
+	const mql = window.matchMedia("(width <= 600px)");
 
 	$scope.toggleGhostMode = function() {
 		$scope.ghostMode = !$scope.ghostMode;
@@ -41,7 +43,6 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		}
 	}
 
-	var saveTimer = null;
 	$scope.saveState = function() {
 		if (saveTimer) $timeout.cancel(saveTimer);
 		saveTimer = $timeout(function() {
@@ -50,6 +51,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	};
 
 	$scope.sortableConfig = {
+		handle: mql.matches ? '.DragHandle' : '',
 		onEnd: function (event) {
 			Characters.dragAndDropSortEnd(event);
 
@@ -62,6 +64,12 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			saveToLocalStorage();
 		}
 	};
+
+	mql.onchange = (e) => {
+		$scope.$applyAsync(function() {
+			$scope.sortableConfig.handle = e.matches ? '.DragHandle' : '';
+		});
+	}
 
 	$timeout(function() {
 		var cachedSession = localStorage.getItem('mudaeRankerCache');
@@ -131,5 +139,10 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 				});
 			}
 		}
+	});
+
+	// Listen for the background AniList fetch completion and commit data to disk
+	$scope.$on('charactersUpdated', function() {
+		saveToLocalStorage();
 	});
 }]);

@@ -573,3 +573,53 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
 .messagebox_overlay {
     z-index: 99999 !important;
 }
+
+/* --- Global Drag Handle Base --- */
+.DragHandle {
+    display: none; /* Hidden by default on desktop viewports */
+    cursor: grab;
+    user-select: none;
+}
+.DragHandle:active {
+    cursor: grabbing;
+}
+
+/* Ensure handle is scrubbed when looking at full profile inspector modal */
+.CharacterFull .DragHandle {
+    display: none !important;
+}
+
+/* --- Mobile Device Layout Override Configuration --- */
+@media (max-width: 768px) {
+
+    /* Reveal and anchor the floating handle badge inside standard Grid Mode cards */
+    body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) .DragHandle {
+        display: block;
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        background-color: rgba(30, 31, 34, 0.85);
+        border: 1px solid #4e5058;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        border-radius: 6px;
+        padding: 2px 6px;
+        color: #dbdee1;
+        font-size: 80%;
+        z-index: 10;
+    }
+
+    /* Reveal and slot the handle neatly into the horizontal List Mode rows */
+    .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .DragHandle {
+        display: block;
+        width: 5%;
+        color: #80848e;
+        font-size: 1.2em;
+        text-align: left;
+    }
+
+    /* Rebalance layout spacing on mobile list columns to give 5% allocation room to the handle */
+    .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterName { width: 35%; }
+    .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterSeries { width: 40%; }
+    .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterNote { width: 20%; }
+}
