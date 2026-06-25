@@ -1,5 +1,4 @@
-mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 'Characters', 'PreferenceList', 'Utilities', function($scope, $http, $timeout, Characters, PreferenceList, Utilities) {
-	var insertState = { active: false, queue: [], target: null, low: 0, high: 0, mid: 0 };
+mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCode', 'Mode', 'PreferenceList', 'Utilities', function($http, $interval, $rootScope, MergeCode, Mode, PreferenceList, Utilities) {	var insertState = { active: false, queue: [], target: null, low: 0, high: 0, mid: 0 };
 	var insertLock = false;
 	var service = {
 		characters: [],
