@@ -22,6 +22,7 @@
 	<script src="Services/characterService.js"></script>
 	<script src="Services/utilityService.js"></script>
 	<script src="Services/preferenceListService.js"></script>
+	<script src="Services/eloService.js"></script>
 
 	<!-- Directives -->
 	<script src="Directives/mudrBody.js"></script>
@@ -57,7 +58,8 @@
 	<br />
 	<div style="text-align: center">
 		<button data-mudr-parse-input>Parse Input</button>
-		<button data-mudr-ranking-start data-ng-disabled="!hasCharacters()">Start Ranking</button>
+		<button class="BtnInsert" data-ng-click="startEndlessRank()" data-ng-disabled="!hasCharacters()">Endless Rank</button>
+		<button data-mudr-ranking-start data-ng-disabled="!hasCharacters()">Pre-Rank (Finite)</button>
 		<button data-mudr-ranking-resume data-ng-disabled="!hasCharacters() || !getRankingInProgress()">Resume Ranking</button>
 		<button class="ActionBtn" data-ng-click="triggerBatchInsert(getFlaggedCharacters())" data-ng-show="getFlaggedCharacters().length > 0" aria-label="Insert all flagged characters">Insert Flagged ({{ getFlaggedCharacters().length }})</button>
 		<button data-mudr-export-json data-ng-disabled="!hasCharacters()">Export All Characters</button>

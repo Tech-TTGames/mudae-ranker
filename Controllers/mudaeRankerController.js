@@ -7,7 +7,26 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	$scope.getRightCompare = Characters.getRightCompare;
 	$scope.getRankingInProgress = Characters.getRankingInProgress;
 	$scope.hasCharacters = Characters.hasCharacters;
-	$scope.getRankProgress = function() { return PreferenceList.currentIndex + " / " + PreferenceList.size; }
+
+	// --- Dynamic Progress Header ---
+	$scope.getRankProgress = function() {
+		if (Characters.mode === Characters.Modes.Endless) {
+			return "∞ Endless Mode";
+		} else if (Characters.mode === Characters.Modes.Placement) {
+			const target = Characters.getLeftCompare();
+			return "Placement Matches Left: " + (target ? target.placementMatchesLeft : 0);
+		} else {
+			// Finite Mode Fallback
+			return PreferenceList.currentIndex + " / " + PreferenceList.size;
+		}
+	};
+
+	// --- Expose Endless Rank to UI ---
+	$scope.startEndlessRank = function() {
+		if (Characters.startEndlessRank()) {
+			document.getElementById('RankingContainer').style.display = 'block';
+		}
+	};
 
 	// Undo, Ghost Mode, and List View hooks
 	$scope.undoRank = Characters.undoRank;
@@ -19,12 +38,12 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 
 	$scope.toggleGhostMode = function() {
 		$scope.ghostMode = !$scope.ghostMode;
-		if ($scope.ghostMode) $scope.listMode = false; // Turn off List if Ghost is turned on
+		if ($scope.ghostMode) $scope.listMode = false;
 	};
 
 	$scope.toggleListMode = function() {
 		$scope.listMode = !$scope.listMode;
-		if ($scope.listMode) $scope.ghostMode = false; // Turn off Ghost if List is turned on
+		if ($scope.listMode) $scope.ghostMode = false;
 	};
 
 	function saveToLocalStorage() {
@@ -106,10 +125,10 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 
 	$scope.triggerBatchInsert = function(queue) {
 		if (queue.length > 0) {
-			Utilities.showSuccess('Starting insertion for ' + queue.length + ' character(s).', true);
+			Utilities.showSuccess('Starting placement matches for ' + queue.length + ' character(s).', true);
 		}
 
-		var isInserting = Characters.startInsertQueue(queue);
+		var isInserting = Characters.startPlacementMatches(queue);
 		if (isInserting) {
 			document.getElementById('RankingContainer').style.display = 'block';
 		}
