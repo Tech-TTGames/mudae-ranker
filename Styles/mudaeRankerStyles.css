@@ -1,6 +1,6 @@
 body
 {
-	font-family: Calibri, Helvetica, Arial;
+	font-family: Calibri, Helvetica, Arial, sans-serif;
 }
 
 .InputField, .OutputField
@@ -523,4 +523,40 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
     backdrop-filter: blur(4px);
     border-radius: 6px;
     padding: 2px 6px;
+}
+
+/* --- Insert & Flag Controls --- */
+.InsertControls {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.InsertControls button {
+    flex: 1;
+    border-radius: 3px;
+    cursor: pointer;
+    border: none;
+    padding: 4px;
+}
+
+.BtnFlag {
+    border: 1px solid #4e5058 !important;
+    background-color: transparent;
+    color: #dbdee1;
+}
+
+.BtnFlag.Flagged {
+    background-color: #ffd700;
+    color: #000;
+}
+
+.BtnInsert {
+    background-color: #5865F2;
+    color: white;
+}
+
+/* --- Fix: Keep Confirmation Popups on Top --- */
+.messagebox_overlay {
+    z-index: 99999 !important;
 }

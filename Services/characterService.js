@@ -1,4 +1,6 @@
-mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCode', 'Mode', 'PreferenceList', 'Utilities', function($http, $interval, $rootScope, MergeCode, Mode, PreferenceList, Utilities) {
+mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 'Characters', 'PreferenceList', 'Utilities', function($scope, $http, $timeout, Characters, PreferenceList, Utilities) {
+	var insertState = { active: false, queue: [], target: null, low: 0, high: 0, mid: 0 };
+	var insertLock = false;
 	var service = {
 		characters: [],
 		
@@ -137,7 +139,7 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 			initialText = initialText.replace(/\u200b/g,'');
 
 			// Get rid of timestamps
-			initialText = initialText.replace(/\[([1-9]|1[12]):([0-5][0-9]) [AP]M\] BOTMuda(e|maid)( \d+)?: /gi, '');
+			initialText = initialText.replace(/\[([1-9]|1[12]):([0-5][0-9]) [AP]M] BOTMuda(e|maid)( \d+)?: /gi, '');
 			initialText = initialText.replace(/Muda(e|maid \d+)BOTToday at ([1-9]|1[12]):([0-5][0-9]) [AP]M/gi, '');
 
 			// Remove angle brackets < > surrounding Discord URLs
@@ -204,7 +206,9 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 						originalName: originalName,
 						series: seriesName,
 						note: noteText,
-						skip: false
+						skip: false,
+						linkedTo: '',
+						insertFlag: false
 					};
 
 					if (mergeCharacters)
@@ -214,7 +218,7 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 						switch (mergeResults.code)
 						{
 						case MergeCode.NotFound:
-							if (imageURLIndex == -1)
+							if (imageURLIndex === -1)
 							{
 								lookupRequired = true;
 							}
@@ -232,7 +236,7 @@ mudaeRanker.service('Characters', ['$http', '$interval', '$rootScope', 'MergeCod
 					{
 						service.addCharacter(character);
 						
-						if (imageURLIndex == -1)
+						if (imageURLIndex === -1)
 						{
 							lookupRequired = true;
 						}
@@ -563,7 +567,7 @@ mergeCharacter: function (character)
 						matchCharacter.imageUrl = character.imageUrl;
 					}
 
-					if (matchCharacter.imageUrl != null && matchCharacter.imageUrl != '')
+					if (matchCharacter.imageUrl != null && matchCharacter.imageUrl !== '')
 					{
 						return { code: MergeCode.NoAction, match: matchCharacter };
 					}
@@ -600,6 +604,65 @@ mergeCharacter: function (character)
 			}
 		},
 
+		resolveLinks: function(rankedArray, discardedArray) {
+			var finalArray = [];
+			var linkMap = {};
+			var trulyDiscarded = [];
+
+			// 1. Group all skipped characters by their target link
+			discardedArray.forEach(function(c) {
+				if (c.linkedTo && c.linkedTo.trim() !== '') {
+					var target = c.linkedTo.trim().toLowerCase();
+					if (!linkMap[target]) linkMap[target] = [];
+					linkMap[target].push(c);
+				} else {
+					trulyDiscarded.push(c);
+				}
+			});
+
+			var processedSet = new Set();
+
+			// 2. Recursive function to place a character and instantly place anyone linked to them
+			function insertWithLinks(char) {
+				if (processedSet.has(char.originalName)) return; // Safety check: Prevent infinite A->B->A loops
+				processedSet.add(char.originalName);
+
+				finalArray.push(char);
+
+				// Check if anyone is linked to this character (by original or minimized name)
+				var target1 = char.originalName.toLowerCase();
+				var target2 = char.minimizedName.toLowerCase();
+
+				var links = (linkMap[target1] || []).concat(linkMap[target2] || []);
+
+				// Clean up the map so we track orphans later
+				delete linkMap[target1];
+				delete linkMap[target2];
+
+				// Recursively insert the linked characters right beneath their target
+				links.forEach(function(linkedChar) {
+					insertWithLinks(linkedChar);
+				});
+			}
+
+			// 3. Process the main ranked list
+			rankedArray.forEach(function(char) {
+				insertWithLinks(char);
+			});
+
+			// 4. Handle orphans (Characters linked to a name that doesn't exist or was discarded without a root)
+			Object.keys(linkMap).forEach(function(key) {
+				linkMap[key].forEach(function(char) {
+					trulyDiscarded.push(char);
+				});
+			});
+
+			// Push everything else to the absolute bottom
+			finalArray.push(...trulyDiscarded);
+
+			return finalArray;
+		},
+
 		updateCharacterImage: function (index, source)
 		{
 			service.characters[index].imageUrl = source;
@@ -616,7 +679,7 @@ mergeCharacter: function (character)
 				{
 					// Remove the CharacterFull class from the currently active character
 					var aClass = service.characters[service.activeIndex].className;
-					service.characters[service.activeIndex].className = aClass.replace(/(?: )?CharacterFull( )?/,'$1');
+					service.characters[service.activeIndex].className = aClass.replace(/ ?CharacterFull( )?/, '$1')
 
 					// Reset the activeIndex to -1
 					service.activeIndex = -1;
@@ -635,7 +698,7 @@ mergeCharacter: function (character)
 					{
 						service.inMessageBox = true;
 
-						Utilities.confirm('Are you sure you want to delete this character?', 'Confirm Deletion').done(function (data, button) {
+						Utilities.confirm('Are you sure you want to delete this character?', 'Confirm Deletion').done(function () {
 							service.characters.splice(service.activeIndex, 1);
 							service.handleDeletedCharacter(service.activeIndex);
 
@@ -643,7 +706,7 @@ mergeCharacter: function (character)
 							service.activeIndex = -1;
 							service.inMessageBox = false;
 							resolve();
-						}).fail(function (data, button) {
+						}).fail(function () {
 							console.log('Then why did you click the delete button?');
 							service.inMessageBox = false;
 							reject();
@@ -657,7 +720,7 @@ mergeCharacter: function (character)
 		{
 			if (service.mode === Mode.Edit)
 			{
-				if (index != service.activeIndex)
+				if (index !== service.activeIndex)
 				{
 					service.disableSortable();
 
@@ -665,7 +728,7 @@ mergeCharacter: function (character)
 					{
 						// Remove the CharacterFull class from the currently active character
 						var aClass = service.characters[service.activeIndex].className;
-						service.characters[service.activeIndex].className = aClass.replace(/(?: )?CharacterFull( )?/,'$1');
+						service.characters[service.activeIndex].className = aClass.replace(/ ?CharacterFull( )?/, '$1')
 					}
 
 					// Add the CharacterFull class to the character being sent in
@@ -699,17 +762,50 @@ mergeCharacter: function (character)
 			service._undoStack.push({
 				rankedCharacters: angular.copy(service._rankedCharacters),
 				discardedCharacters: angular.copy(service._discardedCharacters),
-				prefState: angular.copy(PreferenceList.getState())
+				prefState: angular.copy(PreferenceList.getState()),
+				insertState: angular.copy(insertState),
+				mainCharacters: angular.copy(service.characters)
 			});
 		},
 
 		undoRank: function () {
 			if (service._undoStack.length > 0) {
 				var prevState = service._undoStack.pop();
+
+				// Restore classic Merge Sort states
 				service._rankedCharacters = prevState.rankedCharacters;
 				service._discardedCharacters = prevState.discardedCharacters;
 				PreferenceList.setState(prevState.prefState);
-				service.presentCardsForComparison();
+
+				// Restore the main grid array
+				if (prevState.mainCharacters) {
+					service.characters = prevState.mainCharacters;
+				}
+
+				// Branch logic: Are we undoing an Insert or a Merge Sort?
+				if (prevState.insertState && prevState.insertState.active) {
+					// Restore Insert Engine State
+					insertState.active = prevState.insertState.active;
+					insertState.queue = prevState.insertState.queue;
+					insertState.target = prevState.insertState.target;
+					insertState.low = prevState.insertState.low;
+					insertState.high = prevState.insertState.high;
+					insertState.mid = prevState.insertState.mid;
+
+					// Rebind the modal variables
+					service.leftCompare = insertState.target;
+					service.rightCompare = service.characters[insertState.mid];
+
+					// Ensure the modal reopens if they Ctrl+Z from the main grid after finishing an insert
+					if (service._rankingContainer) {
+						service._rankingContainer.style.display = 'block';
+					}
+				} else {
+					// Standard Merge Sort Undo
+					insertState.active = false;
+					service.presentCardsForComparison();
+				}
+
 				return true;
 			}
 			return false;
@@ -723,6 +819,9 @@ mergeCharacter: function (character)
 
 		selectLeft: function () {
 			service._saveUndoState();
+			if (insertState.active) {
+				return service.handleInsertDecision(true);
+			}
 			service.rankingInProgress = true;
 			PreferenceList.addAnswer(-1);
 			service.presentCardsForComparison();
@@ -746,6 +845,9 @@ mergeCharacter: function (character)
 
 		selectRight: function () {
 			service._saveUndoState();
+			if (insertState.active) {
+				return service.handleInsertDecision(false);
+			}
 			service.rankingInProgress = true;
 			PreferenceList.addAnswer(1);
 			service.presentCardsForComparison();
@@ -833,7 +935,7 @@ mergeCharacter: function (character)
 				// Splice out the characters that were sorted, then add the remaining non-ranked after that
 				sortedIndices.sort((a, b) => a - b);
 
-				for (var i = total - 1; i >= 0; i--)
+				for (i = total - 1; i >= 0; i--)
 				{
 					service._rankedCharacters.splice(sortedIndices[i], 1);
 				}
@@ -880,14 +982,15 @@ mergeCharacter: function (character)
 
 			var sortedIndices = PreferenceList.getOrder();
 			var total = sortedIndices.length;
-			var newCharacters = [];
+			var rankedCharacters = [];
 
 			for (var i = 0; i < total; i++)
 			{
-				newCharacters.push(service._rankedCharacters[sortedIndices[i]]);
+				rankedCharacters.push(service._rankedCharacters[sortedIndices[i]]);
 			}
 
-			newCharacters.push(...service._discardedCharacters);
+			// Run the array through our chain-link engine
+			var newCharacters = service.resolveLinks(rankedCharacters, service._discardedCharacters);
 
 			// Flip the mode and flag BEFORE triggering the array update
 			service.toggleMode();
@@ -1042,6 +1145,71 @@ mergeCharacter: function (character)
 					PreferenceList.removeIndex(deleteIndex, true);
 				}
 			}
+		},
+
+		startInsertQueue: function(queueToInsert) {
+			if (!queueToInsert || queueToInsert.length === 0) return false;
+
+			// Temporarily pull the queued characters out of the main array
+			// so they aren't accidentally compared against themselves
+			service.characters = service.characters.filter(function(c) {
+				return queueToInsert.indexOf(c) === -1;
+			});
+
+			insertState.queue = queueToInsert;
+			insertState.active = true;
+
+			return service.nextInsertTarget();
+		},
+
+		nextInsertTarget: function() {
+			if (insertState.queue.length === 0) {
+				// Queue is empty. Clean up flags and signal the UI to close the modal.
+				insertState.active = false;
+				service.characters.forEach(function(c) { c.insertFlag = false; });
+
+				if (service._rankingContainer) {
+					service._rankingContainer.style.display = '';
+				}
+
+				Utilities.showSuccess('Insert sequence complete!', true);
+				return false;
+			}
+
+			insertState.target = insertState.queue.shift();
+			insertState.low = 0;
+			insertState.high = service.characters.length - 1;
+			return service.calculateInsertMid();
+		},
+
+		calculateInsertMid: function() {
+			if (insertState.low > insertState.high) {
+				service.characters.splice(insertState.low, 0, insertState.target);
+				return service.nextInsertTarget();
+			} else {
+				// Calculate the new middle point
+				insertState.mid = Math.floor((insertState.low + insertState.high) / 2);
+
+				service.leftCompare = insertState.target;
+				service.rightCompare = service.characters[insertState.mid];
+
+				return true;
+			}
+		},
+
+		handleInsertDecision: function(isNewCharacterBetter) {
+			if (insertLock) return true;
+			insertLock = true;
+
+			if (isNewCharacterBetter) {
+				insertState.high = insertState.mid - 1;
+			} else {
+				insertState.low = insertState.mid + 1;
+			}
+
+			var result = service.calculateInsertMid();
+			insertLock = false;
+			return result;
 		},
 		
 		// To call from the console: console.log(angular.element(document.body).injector().get('Characters').getDebugInfo(false))

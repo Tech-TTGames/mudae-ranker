@@ -1,6 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+	<title>Mudae Ranker</title>
 	<meta charset="utf-8"/>
 	<meta name="referrer" content="no-referrer" />
 	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -51,13 +52,14 @@
 	<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-message-box@3.1.0/dist/messagebox.min.css"> <!-- https://gasparesganga.com/labs/jquery-message-box/ -->
 </head>
 <body data-ng-app="mudaeRanker" data-ng-controller="mudaeRankerController" data-ng-attr-class="{{ getModeClassName() }} {{ ghostMode ? 'GhostMode' : '' }} {{ listMode ? 'ListMode' : '' }}" data-mudr-body>
-	<textarea id="InputField" class="InputField" placeholder="Paste a previous export or results from $mmasi- here" ></textarea>
-	<textarea id="OutputField" class="OutputField" placeholder="Exported results will show up here" ></textarea>
+	<textarea id="InputField" class="InputField" placeholder="Paste a previous export or results from ...i-s/i-as command here" aria-label="Input field"></textarea>
+	<textarea id="OutputField" class="OutputField" placeholder="Exported results will show up here" aria-label="Output field"></textarea>
 	<br />
 	<div style="text-align: center">
 		<button data-mudr-parse-input>Parse Input</button>
 		<button data-mudr-ranking-start data-ng-disabled="!hasCharacters()">Start Ranking</button>
 		<button data-mudr-ranking-resume data-ng-disabled="!hasCharacters() || !getRankingInProgress()">Resume Ranking</button>
+		<button class="ActionBtn" data-ng-click="triggerBatchInsert(getFlaggedCharacters())" data-ng-show="getFlaggedCharacters().length > 0" aria-label="Insert all flagged characters">Insert Flagged ({{ getFlaggedCharacters().length }})</button>
 		<button data-mudr-export-json data-ng-disabled="!hasCharacters()">Export All Characters</button>
 		<button data-mudr-export-sort data-ng-disabled="!hasCharacters()">Generate Sort Commands</button>
 		<button data-mudr-export-clean>Clean Output</button>
@@ -69,7 +71,7 @@
 	<br />
 
 	<div style="text-align: center; margin-bottom: 15px;">
-    	<input type="text" data-ng-model="searchQuery" placeholder="Search by character or series..." style="width: 50%; padding: 10px; border-radius: 6px; border: 1px solid #1e1f22; background-color: #1e1f22; color: #dbdee1;" />
+    	<input type="text" data-ng-model="searchQuery" placeholder="Search by character or series..." style="width: 50%; padding: 10px; border-radius: 6px; border: 1px solid #1e1f22; background-color: #1e1f22; color: #dbdee1;" aria-label="Search" />
 	</div>
 
 	<div class="CharacterThumb" data-mudr-new-thumb>
@@ -83,24 +85,45 @@
 			</div>
 			<div class="CharacterSeries">{{ c.series }}</div>
 			<div class="CharacterNote" data-ng-show="c.note">{{ c.note }}</div>
-			<img data-ng-src="{{ c.imageUrl }}" />
+			<img data-ng-src="{{ c.imageUrl }}" alt="{{ c.originalName }}"/>
 			<div class="CharacterURL">
 				<label>URL: <input type="text" value="{{ c.imageUrl }}" data-mudr-url-input /></label>
 			</div>
+			<div class="InsertControls">
+				<!-- Batch Flag Toggle -->
+				<button class="BtnFlag"
+						data-ng-class="{'Flagged': c.insertFlag}"
+						data-ng-click="c.insertFlag = !c.insertFlag"
+						aria-label="Toggle Flag">
+					🚩 Flag
+				</button>
+
+				<!-- Quick Single Insert -->
+				<button class="BtnInsert"
+						data-ng-click="triggerBatchInsert([c])"
+						aria-label="Quick Insert">
+					⚡ Insert
+				</button>
+			</div>
 			<div class="CharacterSkip">
 				<label data-mudr-skip-input><input type="checkbox" data-ng-model="c.skip" />Skip?</label><span class="CharacterDelete" title="Delete Character" data-mudr-card-delete>&#128465;</span>
+			</div>
+			<div class="CharacterLink" data-ng-show="c.skip" style="margin-top: 4px;">
+				<label style="font-size: 80%; color: #949ba4;">Link after:
+					<input type="text" data-ng-model="c.linkedTo" placeholder="Exact Character Name" style="width: 100%; box-sizing: border-box; background-color: #1e1f22; color: #dbdee1; border: 1px solid #4e5058; border-radius: 3px; padding: 2px 4px; margin-top: 2px;" />
+				</label>
 			</div>
 		</div>
 	</div>
 
 	<div id="NewCharacterCard" class="CharacterThumb CharacterFull NewCharacterCard" style="display:none" data-mudr-new-character-card>
 		<div class="CharacterName">
-			<input id="NewCharacterName" type="text" class="CharacterNameText" placeholder="Character Name" /><span id="NewCharacterCancel" class="CharacterClose" title="Close Card">&#10062;</span>
+			<input id="NewCharacterName" type="text" class="CharacterNameText" placeholder="Character Name" aria-label="New Character Name"/><span id="NewCharacterCancel" class="CharacterClose" title="Close Card">&#10062;</span>
 		</div>
 		<div>Make sure you put in the full name, including any series abbreviations. For Example: "Rem (RZ)", not "Rem"</div>
-		<div class="CharacterSeries"><input id="NewCharacterSeries" type="text" placeholder="Series" /></div>
-		<div class="CharacterNote" data-ng-show="c.note"><input id="NewCharacterNOte" type="text" placeholder="Note" /></div>
-		<img />
+		<div class="CharacterSeries"><input id="NewCharacterSeries" type="text" placeholder="Series" aria-label="New Character Series"/></div>
+		<div class="CharacterNote" data-ng-show="c.note"><input id="NewCharacterNote" type="text" placeholder="Note" aria-label="New Character Note"/></div>
+		<img alt="New character image preview"/>
 		<div class="CharacterURL">
 			<label>URL: <input id="NewCharacterUrl" type="text" value="" /></label>
 		</div>
@@ -124,7 +147,7 @@
 				</div>
 				<div class="CharacterSeries">{{ getLeftCompare().series }}</div>
 				<div class="CharacterNote" data-ng-show="getLeftCompare().note">{{ getLeftCompare().note }}</div>
-				<img data-ng-src="{{ getLeftCompare().imageUrl }}" />
+				<img data-ng-src="{{ getLeftCompare().imageUrl }}" alt="{{ getLeftCompare().name }}"/>
 				<div class="CharacterURL">
 					<label>URL: <input type="text" value="{{ getLeftCompare().imageUrl }}" data-mudr-left-compare-url /></label>
 				</div>
@@ -142,7 +165,7 @@
 				</div>
 				<div class="CharacterSeries">{{ getRightCompare().series }}</div>
 				<div class="CharacterNote" data-ng-show="getRightCompare().note">{{ getRightCompare().note }}</div>
-				<img data-ng-src="{{ getRightCompare().imageUrl }}" />
+				<img data-ng-src="{{ getRightCompare().imageUrl }}" alt="{{ getRightCompare().name }}"/>
 				<div class="CharacterURL">
 					<label>URL: <input type="text" value="{{ getRightCompare().imageUrl }}" data-mudr-right-compare-url /></label>
 				</div>

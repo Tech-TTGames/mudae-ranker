@@ -78,6 +78,21 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		}
 	});
 
+	$scope.getFlaggedCharacters = function() {
+		return $scope.characters.filter(function(c) { return c.insertFlag && !c.skip; });
+	};
+
+	$scope.triggerBatchInsert = function(queue) {
+		if (queue.length > 0) {
+			Utilities.showSuccess('Starting insertion for ' + queue.length + ' character(s).', true);
+		}
+
+		var isInserting = Characters.startInsertQueue(queue);
+		if (isInserting) {
+			document.getElementById('RankingContainer').style.display = 'block';
+		}
+	};
+
 	// --- HOTKEYS ---
 	document.addEventListener('keydown', function(event) {
 		if ($scope.getModeClassName() === 'RankMode') {
