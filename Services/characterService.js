@@ -20,6 +20,11 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service.isEndlessMode = () => service.mode === Mode.Endless;
 	service.getRankingInProgress = () => service.mode !== Mode.Edit; // Single unified declaration
 
+	Object.defineProperty(service, 'rankingInProgress', {
+		get: () => service.getRankingInProgress(),
+		configurable: true
+	});
+
 	// --- Placement Matches State ---
 	const placementState = {
 		active: false,
@@ -143,6 +148,9 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service.clean = () => {
 		service.characters.length = 0;
 		service.mode = Mode.Edit;
+
+		service._undoStack.length = 0;
+
 		placementState.active = false;
 		placementState.queue = [];
 		return service.characters;
@@ -419,6 +427,11 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 	// --- Endless Rank Engine ---
 	service.startEndlessRank = () => {
+		if (service.getRankingInProgress() && service.mode !== Mode.Endless) {
+			Utilities.showWarning("A calibration session is already active. Please pause or finish it before entering Endless Rank.", true);
+			return false;
+		}
+
 		const validChars = service.characters.filter(c => !c.skip);
 		if (validChars.length < 2) {
 			Utilities.showError("Not enough un-skipped characters to run Endless Rank.", true);
