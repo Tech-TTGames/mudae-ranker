@@ -526,7 +526,11 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
 }
 
 /* --- Insert & Flag Controls --- */
-.InsertControls {
+.CharacterThumb .InsertControls {
+    display: none;
+}
+
+.CharacterThumb.CharacterFull .InsertControls {
     display: flex;
     gap: 4px;
     margin-top: 4px;
