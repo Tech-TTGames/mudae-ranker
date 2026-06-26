@@ -265,6 +265,14 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		// 1. Steal Elo and Calibration
 		survivor.elo = target.elo;
 		survivor.placementMatchesLeft = target.placementMatchesLeft;
+		survivor.skip = target.skip;
+
+		if (!survivor.linkedTo || survivor.linkedTo.trim() === '') {
+			survivor.linkedTo = target.linkedTo;
+		}
+		if (target.insertFlag) {
+			survivor.insertFlag = true;
+		}
 
 		// 2. Scavenge missing metadata
 		if ((!survivor.series || survivor.series === 'Unknown Series') && target.series && target.series !== 'Unknown Series') {
@@ -277,20 +285,33 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			survivor.note = target.note;
 		}
 
-		// 3. Delete target
+		// 3. Prevent Orphaned Links: Repoint any other characters that were following the target
+		const targetOriginalLower = target.originalName.toLowerCase();
+		const targetMinLower = target.minimizedName.toLowerCase();
+
+		service.characters.forEach(c => {
+			if (c.skip && c.linkedTo && c.linkedTo.trim() !== '') {
+				const linkLower = c.linkedTo.trim().toLowerCase();
+				if (linkLower === targetOriginalLower || linkLower === targetMinLower) {
+					c.linkedTo = survivor.minimizedName;
+				}
+			}
+		});
+
+		// 4. Delete target
 		service.characters.splice(targetIndex, 1);
 
 		if (direction === -1) {
 			service.activeIndex--;
 		}
 
-		// 4. Cleanup UI
+		// 5. Cleanup UI
 		service.sortArrayByElo();
 		service.minimizeActiveCard(true);
 
 		Utilities.showSuccess(`Merged data! ${survivor.name} absorbed the old entry's stats and missing info.`, true);
 
-		// 5. FIX: Force the controller to save the newly merged state to localStorage immediately!
+		// 6. Force the controller to save the newly merged state to localStorage immediately!
 		$rootScope.$broadcast('charactersUpdated');
 	};
 
