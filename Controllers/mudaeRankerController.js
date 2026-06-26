@@ -1,5 +1,4 @@
-mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 'Characters', 'PreferenceList', 'Utilities', function($scope, $http, $timeout, Characters, PreferenceList, Utilities) {
-
+mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 'Characters', 'PreferenceList', 'Utilities', '$rootScope', function($scope, $http, $timeout, Characters, PreferenceList, Utilities, $rootScope) {
 	$scope.characters = Characters.getCharacters();
 	$scope.getModeClassName = Characters.getModeClassName;
 	$scope.getNextModeName = Characters.getNextModeName;
