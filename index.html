@@ -76,16 +76,7 @@
 		</div>
 
 		<div class="Dropdown">
-			<button class="CharacterActionBtn" data-ng-disabled="!hasCharacters()">📤 Exports ▾</button>
-			<div class="Dropdown-content">
-				<button data-ng-click="exportSort()">🔀 Export Sort ($smp)</button>
-				<button data-ng-click="exportNoteCommand()">📝 Export Notes ($note)</button>
-				<button data-mudr-export-json>💾 Export JSON</button>
-			</div>
-		</div>
-
-		<div class="Dropdown">
-			<button class="CharacterActionBtn">📦 Mass Actions ▾</button>
+			<button class="CharacterActionBtn" data-ng-disabled="!hasCharacters()">📦 Mass Actions ▾</button>
 			<div class="Dropdown-content">
 				<button data-ng-click="triggerBatchInsert(getFlaggedCharacters())" data-ng-disabled="getFlaggedCharacters().length === 0">⚡ Batch Insert</button>
 				<button data-ng-click="massEditNotes()">✏️ Edit Local Notes</button>
@@ -99,6 +90,22 @@
 		</div>
 
 		<span class="SelectionIndicator" data-ng-show="getFlaggedCharacters().length > 0">{{ getFlaggedCharacters().length }} Selected</span>
+
+		<div class="Dropdown">
+			<button class="CharacterActionBtn" data-ng-disabled="!hasCharacters()">📤 Exports ▾</button>
+			<div class="Dropdown-content">
+				<button data-ng-click="exportSort()">🔀 Export Sort ($smp)</button>
+				<button data-ng-click="exportNoteCommand()">📝 Export Notes ($note)</button>
+				<button data-mudr-export-json>💾 Export JSON</button>
+			</div>
+		</div>
+
+		<button class="CharacterActionBtn SyncBtn Connected" data-ng-if="isCloudConnected()" data-ng-click="disconnectCloudSync()" title="Click to disconnect your cloud sync profile">
+		   🟢 Cloud Connected (Gist Sync Active)
+		</button>
+		<button class="CharacterActionBtn SyncBtn Disconnected" data-ng-if="!isCloudConnected()" data-ng-click="connectCloudSync()" title="Click to pair with GitHub for cloud backups">
+		   ⚪ Local Storage Only (Offline Mode)
+		</button>
 
 		<button class="CharacterActionBtn BtnDanger" data-mudr-reset>⚠️ Reset</button>
 	</div>

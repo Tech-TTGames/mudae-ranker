@@ -88,8 +88,34 @@ button:disabled {
 /* Button Utilities */
 .BtnSuccess { background-color: #4CAF50 !important; color: white !important; }
 .BtnPrimary { background-color: #008CBA !important; color: white !important; }
-.BtnDanger { background-color: #da373c !important; color: white !important; margin-left: auto; }
+.BtnDanger {
+    background-color: #da373c !important;
+    color: white !important;
+}
 .TextDanger { color: #da373c !important; }
+
+.SyncBtn {
+    margin-left: auto !important;
+    transition: background-color 0.15s ease;
+    cursor: pointer;
+}
+
+.SyncBtn.Connected {
+    background-color: #23a55a !important;
+}
+.SyncBtn.Connected:hover {
+    background-color: #1a7f43 !important;
+}
+
+/* Muted slate gray for offline/unconnected mode */
+.SyncBtn.Disconnected {
+    background-color: #4e5058 !important;
+    color: #b5bac1 !important;
+}
+.SyncBtn.Disconnected:hover {
+    background-color: #6d6f78 !important;
+    color: #ffffff !important;
+}
 
 /* Pure CSS Dropdown Menus */
 .Dropdown {

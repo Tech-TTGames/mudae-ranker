@@ -46,6 +46,24 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		if ($scope.listMode) $scope.ghostMode = false;
 	};
 
+	function saveState() {
+		saveToLocalStorage();
+
+		const cloudToken = localStorage.getItem('gh_sync_token');
+		const activeGistId = localStorage.getItem('gh_sync_gist_id');
+
+		if (cloudToken && activeGistId) {
+			Characters.saveToGist(cloudToken, activeGistId, Characters.getCharacters())
+				.then(() => {
+					console.log("☁️ Cloud sync up-to-date.");
+				})
+				.catch(err => {
+					console.error("❌ Background cloud sync failed:", err);
+					Utilities.showError("Cloud sync failed. Working offline for now.", false);
+				});
+		}
+	}
+
 	function saveToLocalStorage() {
 		var chars = Characters.getCharacters();
 		if (chars && chars.length > 0) {
@@ -65,7 +83,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	$scope.saveState = function() {
 		if (saveTimer) $timeout.cancel(saveTimer);
 		saveTimer = $timeout(function() {
-			saveToLocalStorage();
+			saveState();
 		}, 1000); // Waits 1 second after you stop typing to save
 	};
 
@@ -266,6 +284,67 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 
 	// Listen for the background AniList fetch completion and commit data to disk
 	$scope.$on('charactersUpdated', function() {
-		saveToLocalStorage();
+		saveState();
 	});
+
+	$scope.connectCloudSync = function() {
+		const APP_CLIENT_ID = "Iv23likoa1dq7SF8pdRm";
+		Characters.redirectToGitHub(APP_CLIENT_ID);
+	};
+
+	$scope.disconnectCloudSync = function() {
+		if (window.confirm("Disconnect cloud sync? Your data will remain intact locally, but changes won't save across other devices.")) {
+			localStorage.removeItem('gh_sync_token');
+			localStorage.removeItem('gh_sync_gist_id');
+			Utilities.showSuccess("Cloud disconnected. Operating in local-only mode.", true);
+		}
+	};
+
+	$scope.initCloudSync = function() {
+		const urlParams = new URLSearchParams(window.location.search);
+		const code = urlParams.get('code');
+
+		// Expose connection state helper to the UI template
+		$scope.isCloudConnected = function() {
+			return !!localStorage.getItem('gh_sync_token');
+		};
+
+		if (code) {
+			const workerUrl = "/a/token";
+			Utilities.showSuccess("Exchanging authorization keys...", false);
+
+			Characters.exchangeAuthCodeForToken(workerUrl, code).then(token => {
+				localStorage.setItem('gh_sync_token', token);
+
+				// Run our discovery matrix check
+				return Characters.findOrCreateSyncGist(token).then(gistInfo => {
+					localStorage.setItem('gh_sync_gist_id', gistInfo.id);
+
+					if (!gistInfo.isNew) {
+						// Device sync activated: pull remote cloud layout down
+						return Characters.loadFromGist(token, gistInfo.id).then(cloudData => {
+							if (cloudData && cloudData.length > 0) {
+								Characters.characters = cloudData;
+								saveToLocalStorage(); // Lock cache locally
+								$rootScope.$broadcast('charactersUpdated');
+							}
+							Utilities.showSuccess("Connected! Synced your character data from the cloud.", true);
+						});
+					} else {
+						Utilities.showSuccess("Connected! Created a fresh private save slot in your cloud.", true);
+					}
+				});
+			}).catch(err => {
+				Utilities.showError("GitHub Sync Activation Failed: " + err.message, true);
+			}).finally(() => {
+				urlParams.delete('code');
+				const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+				window.history.replaceState({}, document.title, newUrl);
+				if (!$scope.$$phase) { $scope.$apply(); }
+			});
+		}
+	};
+
+	// Trigger on boot
+	$scope.initCloudSync();
 }]);

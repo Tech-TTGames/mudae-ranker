@@ -1131,7 +1131,104 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		$rootScope.$broadcast('charactersUpdated');
 	};
 
-service.fetchSeries = (seriesArray) => {
+	// 1. Kickoff the flow: Kick the user over to GitHub's authorization page
+	service.redirectToGitHub = (clientId) => {
+		const redirectUri = window.location.origin + window.location.pathname;
+		window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=gist&redirect_uri=${encodeURIComponent(redirectUri)}`;
+	};
+
+	// 2. Exchange the temporary URL code for a functional bearer token
+	service.exchangeAuthCodeForToken = (workerUrl, authCode) => {
+		return $http({
+			method: 'POST',
+			url: workerUrl,
+			data: { code: authCode },
+			headers: { 'Content-Type': 'application/json' }
+		}).then(response => {
+			if (response.data && response.data.access_token) {
+				return response.data.access_token;
+			}
+			throw new Error(response.data.error_description || 'Token retrieval failed.');
+		});
+	};
+
+	// Scans for an existing file, or creates a new private backup slot if missing
+	service.findOrCreateSyncGist = (token) => {
+		const filename = "mudae_ranker_sync.json";
+		const headers = {
+			'Authorization': `Bearer ${token}`,
+			'Accept': 'application/vnd.github+json'
+		};
+
+		// Step A: Fetch user's recent gists (up to 100)
+		return $http({
+			method: 'GET',
+			url: 'https://api.github.com/gists?per_page=100',
+			headers: headers
+		}).then(response => {
+			const gists = response.data || [];
+			// Look for an existing gist holding our target file
+			const existingGist = gists.find(g => g.files && g.files[filename]);
+
+			if (existingGist) {
+				return { id: existingGist.id, isNew: false };
+			}
+
+			// Step B: If no gist exists, initialize a brand new private one
+			return $http({
+				method: 'POST',
+				url: 'https://api.github.com/gists',
+				headers: headers,
+				data: {
+					description: "Mudae Ranker Cross-device Sync Data",
+					public: false, // Keeps it hidden from their public GitHub profile
+					files: {
+						[filename]: {
+							content: JSON.stringify(service.characters || [])
+						}
+					}
+				}
+			}).then(createResponse => {
+				return { id: createResponse.data.id, isNew: true };
+			});
+		});
+	};
+
+	// Explicitly downloads data from a confirmed tracking Gist slot
+	service.loadFromGist = (token, gistId) => {
+		return $http({
+			method: 'GET',
+			url: `https://api.github.com/gists/${gistId}`,
+			headers: { 'Authorization': `Bearer ${token}` }
+		}).then(response => {
+			const filename = "mudae_ranker_sync.json";
+			if (response.data && response.data.files && response.data.files[filename]) {
+				const content = response.data.files[filename].content;
+				return JSON.parse(content);
+			}
+			throw new Error("Sync file missing inside target Gist.");
+		});
+	};
+
+	service.saveToGist = (token, gistId, characterData) => {
+		return $http({
+			method: 'PATCH',
+			url: `https://api.github.com/gists/${gistId}`,
+			headers: {
+				'Authorization': `Bearer ${token}`,
+				'Accept': 'application/vnd.github+json'
+			},
+			data: {
+				files: {
+					"mudae_ranker_sync.json": {
+						content: JSON.stringify(characterData || [])
+					}
+				}
+			}
+		});
+	};
+
+	service.fetchSeries = (seriesArray) => {
 		const series = seriesArray.pop();
 		if (!series) return;
 
