@@ -120,7 +120,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	});
 
 	$scope.getFlaggedCharacters = function() {
-		return $scope.characters.filter(function(c) { return c.insertFlag && !c.skip; });
+		return $scope.characters.filter(function(c) { return c.flag && !c.skip; });
 	};
 
 	$scope.triggerBatchInsert = function(queue) {
@@ -148,6 +148,94 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			return targetIdx >= 0 && targetIdx < Characters.getCharacters().length;
 		}
 		return false;
+	};
+
+	// --- Mass Prompts ---
+	$scope.exportSort = function() {
+		Characters.exportSort();
+	};
+
+	$scope.exportNoteCommand = function() {
+		// Just trigger the service! It handles the grouping and scoping natively now.
+		Characters.exportNoteCommand();
+	};
+
+	$scope.clearAllFlags = function() {
+		Characters.clearAllFlags();
+		saveToLocalStorage();
+		$rootScope.$broadcast('charactersUpdated');
+	};
+
+	$scope.massDeleteFlagged = function() {
+		Characters.massDeleteFlagged().then(() => {
+			// Force immediate DOM reconciliation after async modal closes
+			$scope.$apply(() => {
+				saveToLocalStorage();
+				$rootScope.$broadcast('charactersUpdated');
+			});
+		}).catch(() => {});
+	};
+
+	$scope.massEditNotes = function() {
+		const flaggedCount = Characters.getFlaggedCharacters().length;
+		const totalCount = Characters.getCharacters().filter(c => !c.skip).length;
+		const targetCount = flaggedCount > 0 ? flaggedCount : totalCount;
+
+		if (targetCount === 0) return;
+
+		const scopeStr = flaggedCount > 0 ? `${flaggedCount} selected` : `ALL ${totalCount} un-skipped`;
+		const newNote = window.prompt(`Enter the local note for ${scopeStr} character(s):\n(Leave blank to clear notes)`);
+
+		if (newNote !== null) {
+			const count = Characters.massEditNotes(newNote);
+			Utilities.showSuccess(`Updated local notes for ${count} character(s).`, true);
+
+			// Sync layout instantly
+			saveToLocalStorage();
+			$rootScope.$broadcast('charactersUpdated');
+		}
+	};
+
+	$scope.massSkipCharacters = function(shouldSkip) {
+		const flaggedCount = Characters.getFlaggedCharacters().length;
+		const totalCount = Characters.getCharacters().filter(c => !c.skip).length;
+		const targetCount = flaggedCount > 0 ? flaggedCount : totalCount;
+
+		if (targetCount === 0) return;
+
+		const actionStr = shouldSkip ? 'SKIP' : 'UN-SKIP';
+		const scopeStr = flaggedCount > 0 ? `${flaggedCount} selected` : `ALL ${totalCount} currently un-skipped`;
+
+		if (window.confirm(`Are you sure you want to mass ${actionStr} ${scopeStr} character(s)?`)) {
+			Characters.massToggleSkip(shouldSkip);
+			Utilities.showSuccess(`Successfully set ${actionStr} status.`, true);
+
+			// Sync layout instantly
+			saveToLocalStorage();
+			$rootScope.$broadcast('charactersUpdated');
+			if (!$scope.$$phase) { $scope.$apply(); }
+		}
+	};
+
+	$scope.massLinkAfterPrompt = function() {
+		const flaggedCount = Characters.getFlaggedCharacters().length;
+		const totalCount = Characters.getCharacters().filter(c => !c.skip).length;
+		const targetCount = flaggedCount > 0 ? flaggedCount : totalCount;
+
+		if (targetCount === 0) return;
+
+		const scopeStr = flaggedCount > 0 ? `${flaggedCount} selected` : `ALL ${totalCount} un-skipped`;
+		const targetName = window.prompt(`Enter the EXACT name of the leader character to chain ${scopeStr} behind:`);
+
+		if (targetName && targetName.trim() !== '') {
+			Characters.massLinkAfter(targetName);
+			Utilities.showSuccess(`Chained dependents behind "${targetName.trim()}".`, true);
+
+			// Sync layout instantly
+			saveToLocalStorage();
+			$rootScope.$broadcast('charactersUpdated');
+			if (!$scope.$$phase) { $scope.$apply(); }
+		}
 	};
 
 	// --- HOTKEYS ---

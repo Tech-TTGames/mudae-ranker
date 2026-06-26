@@ -197,7 +197,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			series: seriesName,
 			skip: skip,
 			linkedTo: '',
-			insertFlag: false,
+			flag: false,
 			elo: EloEngine.DEFAULT_ELO,
 			placementMatchesLeft: skip ? 0 : 5
 		};
@@ -240,7 +240,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		// --- BRAND NEW ARRIVAL ---
 		character.elo = EloEngine.DEFAULT_ELO;
 		character.placementMatchesLeft = character.skip ? 0 : 5;
-		character.insertFlag = !character.skip;
+		character.flag = !character.skip;
 
 		service.characters.push(character);
 		return { code: 'NotFound', match: character };
@@ -270,8 +270,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		if (!survivor.linkedTo || survivor.linkedTo.trim() === '') {
 			survivor.linkedTo = target.linkedTo;
 		}
-		if (target.insertFlag) {
-			survivor.insertFlag = true;
+		if (target.flag) {
+			survivor.flag = true;
 		}
 
 		// 2. Scavenge missing metadata
@@ -404,7 +404,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		if (placementState.queue.length === 0) {
 			placementState.active = false;
 			service.mode = Mode.Edit;
-			service.characters.forEach(c => c.insertFlag = false);
+			service.characters.forEach(c => c.flag = false);
 
 			service.sortArrayByElo();
 			if (service._rankingContainer) service._rankingContainer.style.display = '';
@@ -700,8 +700,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service.startRankMode = () => {
 		service.mode = Mode.RankFinite;
 		service._initializeRankMode();
-		service._rankedCharacters.length = 0;
-		service._discardedCharacters.length = 0;
+		service._rankedCharacters = [];
+		service._discardedCharacters = [];
 
 		service.characters.forEach(character => {
 			if (character.skip) service._discardedCharacters.push(character);
@@ -715,8 +715,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service.resumeRankMode = () => {
 		service.mode = Mode.RankFinite;
 		service._initializeRankMode();
-		service._rankedCharacters.length = 0;
-		service._discardedCharacters.length = 0;
+		service._rankedCharacters = [];
+		service._discardedCharacters = [];
 
 		service.characters.forEach(character => {
 			if (character.skip) service._discardedCharacters.push(character);
@@ -754,7 +754,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		if (service.mode === Mode.Placement) {
 			placementState.active = false;
-			service.characters.forEach(c => c.insertFlag = false);
+			service.characters.forEach(c => c.flag = false);
 		} else if (service.mode === Mode.RankFinite) {
 			PreferenceList.pause();
 			const sortedIndices = PreferenceList.getOrder();
@@ -792,25 +792,193 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		Utilities.showSuccess(angular.toJson(exportData), false);
 	};
 
-	service.exportSort = () => {
-		const chars = service.characters;
-		const total = chars.length;
+	// --- Smart Bulk Actions & Exports ---
+	service.getFlaggedCharacters = () => {
+		return service.characters.filter(c => c.flag);
+	};
 
-		if (total > 0 && chars[0]['originalName'] === undefined) {
+	service.clearAllFlags = () => {
+		service.characters.forEach(c => /** @type {Object} */ (c).flag = false);
+	};
+
+	// Delete MUST always remain strictly bound to flagged items to prevent nuking the database.
+	service.massDeleteFlagged = () => {
+		return new Promise((resolve, reject) => {
+			const flaggedCount = service.getFlaggedCharacters().length;
+			if (flaggedCount === 0) return reject();
+
+			service.inMessageBox = true;
+			Utilities.confirm(`Are you sure you want to permanently delete ${flaggedCount} flagged character(s)?`, 'Confirm Mass Deletion').done(() => {
+				for (let i = service.characters.length - 1; i >= 0; i--) {
+					if (service.characters[i].flag) {
+						service.characters.splice(i, 1);
+					}
+				}
+				service.sortArrayByElo();
+				service.inMessageBox = false;
+				resolve();
+			}).fail(() => {
+				service.inMessageBox = false;
+				reject();
+			});
+		});
+	};
+
+	service.massEditNotes = (newNote) => {
+		const flagged = service.getFlaggedCharacters();
+		const targetList = flagged.length > 0 ? flagged : service.characters.filter(c => !c.skip);
+
+		let updatedCount = 0;
+		targetList.forEach(c => {
+			/** @type {Object} */ (c).note = newNote;
+			updatedCount++;
+		});
+		return updatedCount;
+	};
+
+	service.massToggleSkip = (shouldSkip) => {
+		const flagged = service.getFlaggedCharacters();
+		const targetList = flagged.length > 0 ? flagged : service.characters.filter(c => !c.skip);
+
+		let updatedCount = 0;
+		targetList.forEach(c => {
+			c.skip = shouldSkip;
+			// If un-skipping, wipe any dangling links cleanly
+			if (!shouldSkip) {
+				c.linkedTo = '';
+			}
+			updatedCount++;
+		});
+		return updatedCount;
+	};
+
+	service.massLinkAfter = (targetCharacterName) => {
+		const flagged = service.getFlaggedCharacters();
+		const targetList = flagged.length > 0 ? flagged : service.characters.filter(c => !c.skip);
+
+		// Clean and minimize the target link just like the database engine expects
+		const sanitizedLink = Utilities.minimizeName(targetCharacterName);
+
+		let updatedCount = 0;
+		targetList.forEach(c => {
+			c.skip = true; // Forcing skip to true because an un-skipped character cannot hold a link pointer
+			c.linkedTo = sanitizedLink;
+			updatedCount++;
+		});
+
+		service.reapplyLinks();
+
+		return updatedCount;
+	};
+
+	// Smart Note Export: Works for selected OR all
+	service.exportNoteCommand = () => {
+		const flagged = service.getFlaggedCharacters();
+		const targetList = flagged.length > 0 ? flagged : service.characters.filter(c => !c.skip);
+
+		if (targetList.length === 0) {
+			Utilities.showError('No characters available to export.', true);
+			return;
+		}
+
+		// 1. Group characters by their exact note string
+		const noteGroups = {};
+		targetList.forEach(c => {
+			const note = (c.note || '').trim();
+			if (note !== '') {
+				if (!noteGroups[note]) noteGroups[note] = [];
+				noteGroups[note].push(c.originalName);
+			}
+		});
+
+		if (Object.keys(noteGroups).length === 0) {
+			Utilities.showError('None of the targeted characters have notes saved.', true);
+			return;
+		}
+
+		// 2. Dynamically pack chunks up to Discord's limit
+		let output = '';
+		const MAX_DISCORD_LENGTH = 1900; // Safe buffer below 2000
+
+		for (const [noteText, names] of Object.entries(noteGroups)) {
+			let currentNames = [];
+			let currentLength = `$note $${noteText}`.length; // Base size of the command wrapper
+
+			for (let i = 0; i < names.length; i++) {
+				// Calculate length of adding this name (+1 for the '$' separator if not the first name)
+				const nameLen = names[i].length + (currentNames.length > 0 ? 1 : 0);
+
+				if (currentLength + nameLen > MAX_DISCORD_LENGTH) {
+					// Pushed to the limit! Flush the current chunk and reset.
+					output += `$note ${currentNames.join('$')}$${noteText}\n`;
+					currentNames = [names[i]];
+					currentLength = `$note $${noteText}`.length + names[i].length;
+				} else {
+					// Safe to add
+					currentNames.push(names[i]);
+					currentLength += nameLen;
+				}
+			}
+			// Flush whatever is left over
+			if (currentNames.length > 0) {
+				output += `$note ${currentNames.join('$')}$${noteText}\n`;
+			}
+		}
+
+		Utilities.showSuccess(output.trim(), false);
+	};
+
+	// --- Smart Sort Export: Dynamic Overlap Chunking ---
+	service.exportSort = () => {
+		const flagged = service.getFlaggedCharacters();
+		const targetList = flagged.length > 0 ? flagged : service.characters.filter(c => !c.skip);
+		const total = targetList.length;
+
+		if (total === 0) {
+			Utilities.showError('No characters available to export.', true);
+			return;
+		}
+		if (targetList[0].originalName === undefined) {
 			Utilities.showError('Looks like your characters don\'t have original names stored.', true);
 			return;
 		}
 
-		if (total > 0) {
-			let output = '$fm ' + chars[0].originalName;
-			if (total > 1) {
-				output += '\n\n$smp ' + chars[0].originalName;
-				for (let i = 1; i < total; i++) {
-					output += (i % 20 === 0) ? `\n\n$smp ${chars[i-1].originalName}$${chars[i].originalName}` : `$${chars[i].originalName}`;
+		targetList.sort((a, b) => b.elo - a.elo);
+
+		let output = '';
+		if (flagged.length === 0) {
+			output += `$fm ${targetList[0].originalName}\n\n`;
+		}
+
+		if (total > 1) {
+			const MAX_DISCORD_LENGTH = 1900;
+			let currentChunk = `$smp ${targetList[0].originalName}`;
+
+			for (let i = 1; i < total; i++) {
+				const nextAddition = `$${targetList[i].originalName}`;
+
+				if (currentChunk.length + nextAddition.length > MAX_DISCORD_LENGTH) {
+					// Chunk is full! Save it to output...
+					output += currentChunk + '\n\n';
+
+					// ...and start a new chunk.
+					currentChunk = `$smp ${targetList[i-1].originalName}${nextAddition}`;
+				} else {
+					// Safe to keep packing characters into this chunk
+					currentChunk += nextAddition;
 				}
 			}
-			Utilities.showSuccess(output, false);
+
+			// Flush the final chunk (ensure we don't just print an empty overlap anchor)
+			if (currentChunk !== `$smp ${targetList[total - 1].originalName}`) {
+				output += currentChunk + '\n\n';
+			}
+		} else if (flagged.length > 0 && total === 1) {
+			Utilities.showError('You need at least 2 characters selected to generate a differential sort.', true);
+			return;
 		}
+
+		Utilities.showSuccess(output.trim(), false);
 	};
 
 	/* --- AniList API Handling --- */
@@ -908,11 +1076,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 					note: noteText,
 					skip: false,
 					linkedTo: '',
-					insertFlag: false,
+					flag: false,
 					placementMatchesLeft: 0
 				};
 
-				// FIX: Use a per-character flag to isolate missing asset criteria loops
 				const needsLookupForThisCharacter = (imageURLIndex === -1);
 
 				if (mergeCharacters) {

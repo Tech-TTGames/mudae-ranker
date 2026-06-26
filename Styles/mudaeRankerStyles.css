@@ -1,376 +1,388 @@
-body
-{
-	font-family: Calibri, Helvetica, Arial, sans-serif;
-}
-
-.InputField, .OutputField
-{
-	resize: none;
-	width: 45%;
-	height: 10em;
-}
-
-.CharacterCardContainer
-{
-	display: flex;
-	flex-wrap: wrap;
-}
-
-.CharacterThumb
-{
-	background-color: rgba(255,255,255,.9);
-	border-color: rgb(20,20,20);
-	border-radius: 6px;
-	border-style: solid;
-	border-width: 1px;
-	box-shadow: 2px 2px 3px rgb(90,90,90);
-	box-sizing: border-box;
-	width: 5%;
-	padding: 3px;
-	display: flex;
-	margin: 3px;
-	cursor: pointer;
-}
-
-.CharacterThumb .CharacterName
-{
-	display: none;
-	font-size: 80%;
-	font-weight: bold;
-	overflow: hidden;
-}
-
-.CharacterThumb .CharacterSeries
-{
-	display: none;
-	font-size: 100%;
-	overflow: hidden;
-}
-
-.CharacterThumb.CharacterMissingImage .CharacterName, .CharacterThumb.CharacterMissingImage .CharacterSeries
-{
-	display: block;
-}
-
-.CharacterThumb img
-{
-	width: 100%;
-	height: 100%;
-	border-radius: 6px;
-}
-
-.CharacterThumb .CharacterURL
-{
-	display: none;
-	margin-top: 5px;
-}
-
-.CharacterThumb .CharacterSkip
-{
-	display: none;
-	margin: 3px 0;
-}
-
-.CharacterThumb.CharacterMissingImage img
-{
-	display: none;
-}
-
-.CharacterThumb.CharacterFull
-{
-	display: inline-block;
-	width: auto;
-	max-width: 30%;
-	padding: 4px;
-	cursor: auto;
-	position: relative;
-    z-index: 9999 !important;
-}
-
-.CharacterThumb.CharacterFull .CharacterName
-{
-	display: block;
-	font-size: 100%;
-	font-weight: bold;
-	margin: 2px 0;
-	padding: 2px;
-}
-
-.CharacterNameText
-{
-	float: left;
-}
-
-.CharacterClose
-{
-	cursor: pointer;
-	float: right;
-}
-
-.CharacterDelete
-{
-	cursor: pointer;
-	display: none;
-	float: right;
-}
-
-.EditMode .CharacterDelete
-{
-	display: inline;
-}
-
-.CharacterThumb.CharacterFull .CharacterSeries
-{
-	display: block;
-	font-size: 100%;
-	margin: 2px 0;
-}
-
-.CharacterThumb.CharacterFull img
-{
-	display: block;
-	height: auto;
-}
-
-.CharacterThumb.CharacterFull .CharacterURL, .CharacterThumb.CharacterFull .CharacterSkip
-{
-	display: block;
-	text-align: center;
-}
-
-.CharacterThumb.CharacterFull .CharacterURL input[type="text"]
-{
-	width: 75%;
-}
-
-.EditMode .CharacterThumb.CharacterFull
-{
-	left: 50%;
-	position: fixed;
-	top: 50%;
-	transform: translate(-50%, -50%) translateZ(0) !important;
-}
-
-.CharacterThumb .CharacterNew
-{
-	font-size: 3.5vw;
-	margin: auto;
-}
-
-.NewCharacterCard
-{
-	min-width:20%;
-}
-
-/******************* Rank Mode *******************/
-
-.RankingBlocker
-{
-	background-color:rgb(0,0,0,.5);
-	bottom: 0;
-	display: none;
-	left: 0;
-	position: fixed;
-	right: 0;
-	top: 0;
-	z-index: -1;
-}
-
-.RankMode .RankingBlocker
-{
-	display: block;
-	z-index: auto;
-}
-
-.RankingContainer .CharacterThumb.CharacterFull
-{
-	max-width: 50%;
-	cursor: pointer;
-}
-
-.RankingContainer .CharacterThumb.CharacterFull img
-{
-	width: 225px;
-	height: 350px;
-	object-fit: cover;
-	border-radius: 6px;
-}
-
-.RankMode .CharacterClose
-{
-	display: none;
-}
-
-.RankingContainer
-{
-	left: 50%;
-	position: fixed;
-	top: 50%;
-	transform: translate(-50%, -50%);
-	
-	background-color: rgb(255,255,255);
-	border-color: rgb(20,20,20);
-	border-radius: 6px;
-	border-style: solid;
-	border-width: 1px;
-	box-shadow: 6px 6px 4px rgba(0,0,0,.7);
-	box-sizing: border-box;
-	
-	display: none;
-	
-	padding: 10px;
-}
-
-.RankingContainerTitle
-{
-	font-weight: bold;
-	font-size: 1.5em;
-}
-
-.RankingContainerClose
-{
-	cursor: pointer;
-	float: right;
-}
-
-.RankingCardContainer
-{
-	display: flex;
-}
-
-/******************* Output Field Flash *******************/
-.FlashError
-{
-	-webkit-animation: FlashError 1s ease-in;
-	animation: FlashError 1s ease-in;
-}
-
-@-webkit-keyframes FlashError
-{
-	from {background-color: rgb(255,0,0);}
-	to {background-color: rgb(255,255,255);}
-}
-
-@keyframes FlashError
-{
-	from {background-color: rgb(255,0,0);}
-	to {background-color: rgb(255,255,255);}
-}
-
-.FlashSuccess
-{
-	-webkit-animation: FlashSuccess 1s ease-in;
-	animation: FlashSuccess 1s ease-in;
-}
-
-@-webkit-keyframes FlashSuccess
-{
-	from {background-color: rgb(0,255,0);}
-	to {background-color: rgb(255,255,255);}
-}
-
-@keyframes FlashSuccess
-{
-	from {background-color: rgb(0,255,0);}
-	to {background-color: rgb(255,255,255);}
-}
-
-.FlashWarning
-{
-	-webkit-animation: FlashWarning 1s ease-in;
-	animation: FlashWarning 1s ease-in;
-}
-
-@-webkit-keyframes FlashWarning
-{
-	from {background-color: rgb(255,255,0);}
-	to {background-color: rgb(255,255,255);}
-}
-
-@keyframes FlashWarning
-{
-	from {background-color: rgb(255,255,0);}
-	to {background-color: rgb(255,255,255);}
-}
-
+/* ==========================================================================
+   1. GLOBAL BASE & TYPOGRAPHY
+   ========================================================================== */
 body {
-	background-color: #313338;
-	color: #dbdee1;
-	font-family: 'gg sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #313338;
+    color: #dbdee1;
+    font-family: 'gg sans', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    margin: 8px; /* Default browser margin */
 }
 
-.InputField, .OutputField {
-	background-color: #1e1f22;
-	color: #dbdee1;
-	border: 1px solid #1e1f22;
-	border-radius: 8px;
-	padding: 10px;
-	outline: none;
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
-}
-.InputField:focus, .OutputField:focus {
-	border: 1px solid #5865F2;
-}
-
-button {
-	background-color: #5865F2;
-	color: white;
-	border: none;
-	border-radius: 4px;
-	padding: 8px 16px;
-	margin: 4px;
-	cursor: pointer;
-	font-weight: bold;
-	transition: background-color 0.2s ease;
-}
-button:hover {
-	background-color: #4752c4;
-}
-button:disabled {
-	background-color: #4e5058;
-	color: #80848e;
-	cursor: not-allowed;
-}
-
-.CharacterThumb {
-	background-color: #2b2d31 !important; 
-	border: 1px solid #1e1f22 !important;
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2) !important;
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-.CharacterThumb:hover {
-	transform: translateY(-3px);
-	box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4) !important;
-}
-
-.RankingBlocker {
-	background-color: rgba(0, 0, 0, 0.6);
-	backdrop-filter: blur(4px);
-}
-.RankingContainer {
-	background-color: #313338;
-	border: 1px solid #1e1f22;
-	color: #dbdee1;
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-	border-radius: 12px;
-}
-.RankingContainerTitle {
-    border-bottom: 1px solid #4e5058;
-    padding-bottom: 10px;
+/* ==========================================================================
+   2. UI LAYOUT CONTAINERS
+   ========================================================================== */
+.IOContainer {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
     margin-bottom: 15px;
 }
 
-/* --- Ghost Mode (Performance Toggle) --- */
-.GhostMode .CharacterThumb:not(:hover):not(.CharacterFull):not(.NewCharacterCard) img {
+.TopControlsBar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding: 10px;
+    background-color: #1e1f22;
+    margin-bottom: 15px;
+    border-radius: 5px;
+}
+
+.SearchContainer {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+/* ==========================================================================
+   3. INPUTS & BUTTONS
+   ========================================================================== */
+.InputField, .OutputField {
+    resize: none;
+    width: 45%;
+    height: 10em;
+    background-color: #1e1f22;
+    color: #dbdee1;
+    border: 1px solid #1e1f22;
+    border-radius: 8px;
+    padding: 10px;
+    outline: none;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.InputField:focus, .OutputField:focus {
+    border: 1px solid #5865F2;
+}
+
+.SearchInput {
+    width: 50%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #1e1f22;
+    background-color: #1e1f22;
+    color: #dbdee1;
+}
+
+button {
+    background-color: #5865F2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 16px;
+    margin: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+}
+
+button:hover {
+    background-color: #4752c4;
+}
+
+button:disabled {
+    background-color: #4e5058;
+    color: #80848e;
+    cursor: not-allowed;
+}
+
+/* Button Utilities */
+.BtnSuccess { background-color: #4CAF50 !important; color: white !important; }
+.BtnPrimary { background-color: #008CBA !important; color: white !important; }
+.BtnDanger { background-color: #da373c !important; color: white !important; margin-left: auto; }
+.TextDanger { color: #da373c !important; }
+
+/* Pure CSS Dropdown Menus */
+.Dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.Dropdown-content {
+    position: absolute;
+    background-color: #2b2d31;
+    min-width: 170px;
+    box-shadow: 0 8px 16px 0 rgba(0,0,0,0.4);
+    z-index: 1000;
+    border-radius: 5px;
+    border: 1px solid #4e5058;
+    top: 100%;
+    left: 0;
+    margin-top: 2px;
+
+	opacity: 0;
+    visibility: hidden;
+    pointer-events: none; /* Prevents ghost-clicks when invisible */
+    transform: translateY(-5px); /* Adds a subtle slide-down effect */
+
+    /* When the mouse leaves, WAIT 300ms before fading out */
+    transition: opacity 0.2s ease 0.3s,
+                transform 0.2s ease 0.3s,
+                visibility 0s linear 0.5s; /* Visibility must wait until opacity finishes */
+}
+
+.Dropdown-content button {
+    color: #dbdee1;
+    padding: 10px 14px;
+    text-decoration: none;
+    display: block;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    border-bottom: 1px solid #383a40;
+    transition: background-color 0.2s;
+    margin: 0;
+    border-radius: 0;
+}
+
+.Dropdown-content button:last-child {
+    border-bottom: none;
+}
+
+.Dropdown-content button:hover:not(:disabled) {
+    background-color: #4e5058;
+}
+
+.Dropdown:hover .Dropdown-content {
+	opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateY(0);
+
+    /* When the mouse enters, show it INSTANTLY (0s delay) */
+    transition: opacity 0.1s ease 0s,
+                transform 0.1s ease 0s,
+                visibility 0s linear 0s;
+}
+
+/* ==========================================================================
+   4. CHARACTER CARDS (GRID MODE / THUMBNAILS)
+   ========================================================================== */
+.CharacterCardContainer {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.CharacterThumb {
+    background-color: #2b2d31 !important;
+    border: 1px solid #1e1f22 !important;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2) !important;
+    box-sizing: border-box;
+    width: 5%;
+    padding: 3px;
+    display: flex;
+    margin: 3px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+}
+
+.CharacterThumb:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.CharacterThumb img {
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+}
+
+.CharacterThumb .CharacterName,
+.CharacterThumb .CharacterSeries,
+.CharacterThumb .CharacterURL,
+.CharacterThumb .CharacterSkip,
+.CharacterThumb .CharacterLink {
     display: none;
 }
-.GhostMode .CharacterThumb:not(:hover):not(.CharacterFull):not(.NewCharacterCard) .CharacterName {
+
+/* Missing Image Fallback */
+.CharacterThumb.CharacterMissingImage .CharacterName,
+.CharacterThumb.CharacterMissingImage .CharacterSeries {
     display: block;
-    font-size: 110%;
-    text-align: center;
-    margin: auto;
-    padding: 10px 5px;
 }
+.CharacterThumb.CharacterMissingImage img {
+    display: none;
+}
+
+/* New Character Thumbnail */
+.CharacterThumb .CharacterNew {
+    font-size: 3.5vw;
+    margin: auto;
+}
+
+/* ==========================================================================
+   5. EXPANDED CARDS (CHARACTER FULL)
+   ========================================================================== */
+.CharacterThumb.CharacterFull {
+    display: inline-block;
+    width: auto;
+    max-width: 30%;
+    padding: 4px;
+    cursor: auto;
+    z-index: 9999 !important;
+}
+
+.EditMode .CharacterThumb.CharacterFull {
+    left: 50%;
+    position: fixed;
+    top: 50%;
+    transform: translate(-50%, -50%) translateZ(0) !important;
+}
+
+.CharacterThumb.CharacterFull .CharacterName,
+.CharacterThumb.CharacterFull .CharacterSeries,
+.CharacterThumb.CharacterFull .CharacterURL,
+.CharacterThumb.CharacterFull .CharacterSkip,
+.CharacterThumb.CharacterFull .CharacterLink {
+    display: block;
+}
+
+.CharacterThumb.CharacterFull .CharacterName {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    font-size: 100%;
+    font-weight: bold;
+    margin: 2px 0;
+    padding: 2px;
+    width: 100%;
+}
+
+.CharacterThumb.CharacterFull .CharacterSeries {
+	display: block;
+    width: 100%;
+    font-size: 90%;
+    color: #949ba4; /* Discord-style muted text */
+    margin: 0 0 8px 2px;
+    font-weight: normal;
+}
+
+.CharacterThumb.CharacterFull img {
+    display: block;
+    height: auto;
+}
+
+.CharacterThumb.CharacterFull .CharacterURL,
+.CharacterThumb.CharacterFull .CharacterSkip {
+    text-align: center;
+    margin: 3px 0;
+}
+
+.CharacterNameText {
+    float: none;
+    word-break: break-word;
+}
+.CharacterClose {
+    float: none;
+    cursor: pointer;
+    color: #da373c; /* Give the close button a subtle red tint */
+    margin-left: 8px;
+}
+
+.CharacterDelete { cursor: pointer; display: none; float: right; }
+.EditMode .CharacterDelete { display: inline; }
+
+/* Internal Card Inputs */
+.CardTextInput {
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #1e1f22;
+    color: #dbdee1;
+    border: 1px solid #4e5058;
+    border-radius: 3px;
+    padding: 2px 4px;
+    margin-top: 2px;
+}
+
+.HelperText, .SmallLabel {
+    font-size: 80%;
+    color: #949ba4;
+    padding: 4px;
+    text-align: center;
+}
+
+/* ==========================================================================
+   6. CARD SUB-COMPONENTS (NOTES, FLAGS, HANDLES)
+   ========================================================================== */
+.SelectionIndicator {
+    color: #00a8fc;
+    font-weight: bold;
+    margin-left: 5px;
+}
+
+.CardSkipped {
+    background-color: rgba(255,0,0,0.9) !important;
+}
+
+/* Notes */
+.CharacterNote {
+    display: inline-block;
+    background-color: rgba(30, 31, 34, 0.85);
+    color: #ffd700;
+    font-size: 80%;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 90%;
+}
+
+.CharacterNoteEdit { display: none; margin-top: 4px; }
+.CharacterFull .CharacterNoteEdit { display: block; }
+.CharacterFull .CharacterNote { display: none !important; }
+
+/* Notes positioning on Grid (Desktop) */
+body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) .CharacterNote {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    max-width: calc(100% - 12px);
+    box-sizing: border-box;
+    border: 1px solid #4e5058;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    border-radius: 6px;
+    margin: 0;
+}
+
+/* Insert Controls */
+.CharacterThumb .InsertControls { display: none; }
+.CharacterThumb.CharacterFull .InsertControls { display: flex; gap: 4px; margin-top: 4px; }
+.InsertControls button { flex: 1; border-radius: 3px; cursor: pointer; border: none; padding: 4px; }
+
+.BtnFlag { border: 1px solid #4e5058 !important; background-color: transparent; color: #dbdee1; }
+.BtnFlag.Flagged { background-color: #ffd700; color: #000; }
+.BtnInsert { background-color: #5865F2; color: white; }
+
+/* Merge Button */
+.MergeBtn {
+    display: none;
+    background-color: #6a1b9a;
+    color: white;
+    border: none;
+    transition: opacity 0.3s ease, background-color 0.3s ease, transform 0.1s ease;
+    margin-top: 5px;
+    width: 100%;
+    padding: 4px 0;
+}
+.CharacterFull .MergeBtn { display: block; }
+.MergeBtn:hover:not(:disabled) { background-color: #8e24aa; transform: translateY(-1px); }
+.MergeBtn:disabled { opacity: 0.3; background-color: #555; cursor: not-allowed; box-shadow: none; }
+
+/* Drag Handle */
+.DragHandle { display: none; cursor: grab; user-select: none; }
+.DragHandle:active { cursor: grabbing; }
+.CharacterFull .DragHandle { display: none !important; }
+
+/* ==========================================================================
+   7. VIEW MODES (LIST & GHOST)
+   ========================================================================== */
+/* Ghost Mode */
 .GhostMode .CharacterThumb:not(:hover):not(.CharacterFull):not(.NewCharacterCard) {
     aspect-ratio: 225 / 350;
     display: flex;
@@ -379,16 +391,22 @@ button:disabled {
     justify-content: center;
     overflow: hidden;
 }
+.GhostMode .CharacterThumb:not(:hover):not(.CharacterFull):not(.NewCharacterCard) img { display: none; }
+.GhostMode .CharacterThumb:not(:hover):not(.CharacterFull):not(.NewCharacterCard) .CharacterName {
+    display: block;
+    font-size: 110%;
+    text-align: center;
+    margin: auto;
+    padding: 10px 5px;
+}
 
-/* --- List View (Compact Directory Mode) --- */
+/* List Mode */
 .ListMode .CharacterCardContainer {
     display: block;
     width: 100%;
     max-width: 800px;
     margin: auto;
 }
-
-/* Hover condition removed: Rows remain rigid when mouse passes over */
 .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) {
     display: flex;
     flex-direction: row;
@@ -400,257 +418,161 @@ button:disabled {
     justify-content: space-between;
     align-items: center;
 }
-
-/* Image permanently hidden in list view unless explicitly clicked */
-.ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) img {
-    display: none;
-}
-
+.ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) img { display: none; }
 .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterName {
-    display: block;
-    font-size: 110%;
-    text-align: left;
-    margin: 0;
-    width: 50%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: block; font-size: 110%; text-align: left; margin: 0; width: 40%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-
 .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterSeries {
-    display: block;
-    font-size: 90%;
-    color: #949ba4;
-    text-align: right;
-    width: 50%;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: block; font-size: 90%; color: #949ba4; text-align: right; width: 40%;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-
-/* --- Note Styling (Grid & Ranking Mode) --- */
-.CharacterNote {
-    display: inline-block;
-    background-color: rgba(0, 0, 0, 0.6);
-    color: #ffd700; /* Gold text for emojis/tags to pop */
-    font-size: 80%;
-    padding: 2px 6px;
-    border-radius: 4px;
-    margin-top: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 90%;
-}
-
-/* --- Note Styling (List View Override) --- */
 .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterNote {
-    display: block;
-    width: 20%;
-    text-align: center;
-    background-color: transparent;
-    margin: 0;
-    padding: 0;
+    display: block; width: 20%; text-align: center; background-color: transparent; margin: 0; padding: 0;
 }
 
-/* Adjust the List View widths so Name, Note, and Series fit perfectly on one line */
-.ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterName { width: 40%; }
-.ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterSeries { width: 40%; }
+/* ==========================================================================
+   8. RANKING MODE (MODALS)
+   ========================================================================== */
+.RankingBlocker {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    bottom: 0; display: none; left: 0; position: fixed; right: 0; top: 0; z-index: -1;
+}
+.RankMode .RankingBlocker { display: block; z-index: auto; }
+.RankMode .CharacterClose { display: none; }
 
-/* --- Ensure Notes look balanced inside the Ranking Modal --- */
-.RankingContainer .CharacterThumb.CharacterFull .CharacterNote {
-    margin-bottom: 8px;
-    margin-top: 4px;
-    display: inline-block; /* Keeps the badge shape */
+.RankingContainer {
+    left: 50%; position: fixed; top: 50%; transform: translate(-50%, -50%);
+    background-color: #313338;
+    border: 1px solid #1e1f22;
+    color: #dbdee1;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    display: none;
+    padding: 10px;
 }
 
-/* --- Mobile Responsiveness --- */
+/* --- Ranking Modal Header (Flexbox Upgrade) --- */
+.RankingContainerTitle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #4e5058;
+    padding-bottom: 12px;
+    margin-bottom: 15px;
+}
+
+.RankingTitleText {
+    font-weight: bold;
+    font-size: 1.3em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.RankingProgress {
+    font-size: 0.7em;
+    color: #949ba4;
+    font-weight: normal;
+}
+
+.RankingControls {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.RankingContainerClose {
+    cursor: pointer;
+    font-size: 1.2em;
+    color: #da373c; /* A clean red X instead of the weird emoji block */
+    transition: transform 0.1s ease;
+}
+
+.RankingContainerClose:hover {
+    transform: scale(1.2);
+}
+
+.UndoBtn {
+    margin: 0 !important; /* Strips out the old legacy margin/float */
+    background-color: #5865F2;
+}
+
+/* --- Ranking Modal Cards Spacing --- */
+.RankingCard {
+    background-color: #2b2d31 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 10px !important;
+}
+
+.RankingCard:hover {
+    transform: none !important; /* Stop the cards from jumping up when hovering in the modal */
+}
+
+/* Give the two cards some breathing room */
+.RankingCardContainer {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.RankingContainer .CharacterThumb.CharacterFull { max-width: 50%; cursor: pointer; }
+.RankingContainer .CharacterThumb.CharacterFull img { width: 225px; height: 350px; object-fit: cover; border-radius: 6px; }
+.RankingContainer .CharacterThumb.CharacterFull .CharacterNote { margin-bottom: 8px; margin-top: 4px; display: inline-block; }
+
+#NewCharacterCard { display: none; min-width: 20%; }
+.messagebox_overlay { z-index: 99999 !important; }
+
+/* ==========================================================================
+   9. MOBILE RESPONSIVENESS
+   ========================================================================== */
 @media (max-width: 768px) {
-    /* 1. Make text boxes stack and fill screen */
+    .IOContainer {
+        flex-direction: column;
+        align-items: center;
+    }
+
     .InputField, .OutputField {
-        width: 90%;
+        width: 100%;
         height: 6em;
     }
 
-    /* 2. Resize Grid Cards for Touch (3-4 per row instead of 20) */
-    .CharacterThumb {
-        width: 30%;
-        min-height: 120px;
-    }
+    .CharacterThumb { width: 30%; min-height: 120px; }
+    .RankingContainer { width: 95%; padding: 10px; max-height: 95vh; overflow-y: auto; }
 
-    /* 3. Ranking Modal Overhauls */
-    .RankingContainer {
-        width: 95%;
-        padding: 10px;
-        max-height: 95vh;
-        overflow-y: auto;
-    }
-
-    /* 4. Stack Comparison Cards Vertically on Portrait Phones */
     @media (orientation: portrait) {
-        .RankingCardContainer {
-            flex-direction: column;
-            align-items: center;
-        }
-        .RankingContainer .CharacterThumb.CharacterFull {
-            max-width: 90%;
-            margin-bottom: 15px;
-        }
-        .RankingContainer .CharacterThumb.CharacterFull img {
-            height: 250px;
-            width: 160px;
-        }
+        .RankingCardContainer { flex-direction: column; align-items: center; }
+        .RankingContainer .CharacterThumb.CharacterFull { max-width: 90%; margin-bottom: 15px; }
+        .RankingContainer .CharacterThumb.CharacterFull img { height: 250px; width: 160px; }
     }
-}
 
-body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) {
-	position: relative;
-}
-
-body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) .CharacterNote {
-    position: absolute;
-    top: 6px;
-    right: 6px;
-    max-width: calc(100% - 12px);
-    box-sizing: border-box;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin: 0;
-    background-color: rgba(30, 31, 34, 0.85);
-    border: 1px solid #4e5058;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
-    border-radius: 6px;
-    padding: 2px 6px;
-}
-
-/* --- Insert & Flag Controls --- */
-.CharacterThumb .InsertControls {
-    display: none;
-}
-
-.CharacterThumb.CharacterFull .InsertControls {
-    display: flex;
-    gap: 4px;
-    margin-top: 4px;
-}
-
-.InsertControls button {
-    flex: 1;
-    border-radius: 3px;
-    cursor: pointer;
-    border: none;
-    padding: 4px;
-}
-
-.BtnFlag {
-    border: 1px solid #4e5058 !important;
-    background-color: transparent;
-    color: #dbdee1;
-}
-
-.BtnFlag.Flagged {
-    background-color: #ffd700;
-    color: #000;
-}
-
-.BtnInsert {
-    background-color: #5865F2;
-    color: white;
-}
-
-/* --- Link After Controls --- */
-.CharacterThumb .CharacterLink {
-    display: none;
-}
-
-.CharacterThumb.CharacterFull .CharacterLink {
-    display: block;
-}
-
-/* --- Fix: Keep Confirmation Popups on Top --- */
-.messagebox_overlay {
-    z-index: 99999 !important;
-}
-
-/* --- Global Drag Handle Base --- */
-.DragHandle {
-    display: none; /* Hidden by default on desktop viewports */
-    cursor: grab;
-    user-select: none;
-}
-.DragHandle:active {
-    cursor: grabbing;
-}
-
-/* Ensure handle is scrubbed when looking at full profile inspector modal */
-.CharacterFull .DragHandle {
-    display: none !important;
-}
-
-/* --- Mobile Device Layout Override Configuration --- */
-@media (max-width: 768px) {
-
-    /* Reveal and anchor the floating handle badge inside standard Grid Mode cards */
+    /* Drag Handles for Mobile */
     body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) .DragHandle {
-        display: block;
-        position: absolute;
-        top: 6px;
-        left: 6px;
-        background-color: rgba(30, 31, 34, 0.85);
-        border: 1px solid #4e5058;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4);
-        backdrop-filter: blur(4px);
-        border-radius: 6px;
-        padding: 2px 6px;
-        color: #dbdee1;
-        font-size: 80%;
-        z-index: 10;
+        display: block; position: absolute; top: 6px; left: 6px;
+        background-color: rgba(30, 31, 34, 0.85); border: 1px solid #4e5058;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.4); backdrop-filter: blur(4px);
+        border-radius: 6px; padding: 2px 6px; color: #dbdee1; font-size: 80%; z-index: 10;
     }
 
-    /* Reveal and slot the handle neatly into the horizontal List Mode rows */
     .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .DragHandle {
-        display: block;
-        width: 5%;
-        color: #80848e;
-        font-size: 1.2em;
-        text-align: left;
+        display: block; width: 5%; color: #80848e; font-size: 1.2em; text-align: left;
     }
 
-    /* Rebalance layout spacing on mobile list columns to give 5% allocation room to the handle */
     .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterName { width: 35%; }
     .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterSeries { width: 40%; }
     .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterNote { width: 20%; }
 }
 
-/* --- Merge Button --- */
-.MergeBtn {
-    display: none;
+/* ==========================================================================
+   10. ANIMATIONS
+   ========================================================================== */
+.FlashError { animation: FlashError 1s ease-in; }
+@keyframes FlashError { from {background-color: rgb(255,0,0);} to {background-color: rgb(255,255,255);} }
 
-    background-color: #6a1b9a;
-    color: white;
-    border: none;
-    transition: opacity 0.3s ease, background-color 0.3s ease, transform 0.1s ease;
+.FlashSuccess { animation: FlashSuccess 1s ease-in; }
+@keyframes FlashSuccess { from {background-color: rgb(0,255,0);} to {background-color: rgb(255,255,255);} }
 
-    margin-top: 5px;
-    width: 100%;
-    padding: 4px 0;
-}
-
-.CharacterFull .MergeBtn {
-    display: block;
-}
-
-.MergeBtn:hover:not(:disabled) {
-    background-color: #8e24aa;
-    transform: translateY(-1px);
-    cursor: pointer;
-}
-
-.MergeBtn:disabled {
-    opacity: 0.3;
-    background-color: #555;
-    cursor: not-allowed;
-    box-shadow: none;
-}
+.FlashWarning { animation: FlashWarning 1s ease-in; }
+@keyframes FlashWarning { from {background-color: rgb(255,255,0);} to {background-color: rgb(255,255,255);} }
