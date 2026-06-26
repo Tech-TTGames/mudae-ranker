@@ -218,21 +218,26 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			if (matchCharacter.minimizedName === character.minimizedName &&
 			   (matchCharacter.series === character.series || matchCharacter.series === 'Unknown Series' || character.series === 'Unknown Series')) {
 
+				// 1. Upgrade Series if the new paste provides missing context
 				if (matchCharacter.series === 'Unknown Series' && character.series !== 'Unknown Series') {
 					matchCharacter.series = character.series;
 				}
+
+				// 2. Upgrade Notes
 				if (character.note && character.note !== '') {
 					matchCharacter.note = character.note;
 				}
-				matchCharacter.originalName = character.originalName;
 
-				if ((matchCharacter.imageUrl == null || matchCharacter.imageUrl === '') && character.imageUrl) {
+				// 3. Aggressive Image Override (Drops the useless name sync)
+				if (character.imageUrl && character.imageUrl.trim() !== '') {
 					matchCharacter.imageUrl = character.imageUrl;
 				}
+
 				return { code: matchCharacter.imageUrl ? 'NoAction' : 'Lookup', match: matchCharacter };
 			}
 		}
 
+		// --- BRAND NEW ARRIVAL ---
 		character.elo = EloEngine.DEFAULT_ELO;
 		character.placementMatchesLeft = character.skip ? 0 : 5;
 		character.insertFlag = !character.skip;
@@ -244,6 +249,49 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service.mergeAll = (newCharacters) => {
 		if (!Array.isArray(newCharacters)) return;
 		newCharacters.forEach(c => service.mergeCharacter(c));
+	};
+
+	service.absorbAdjacent = (direction) => {
+		if (service.mode !== Mode.Edit || service.activeIndex < 0) return;
+
+		const survivorIndex = service.activeIndex;
+		const targetIndex = survivorIndex + direction;
+
+		if (targetIndex < 0 || targetIndex >= service.characters.length) return;
+
+		const survivor = service.characters[survivorIndex];
+		const target = service.characters[targetIndex];
+
+		// 1. Steal Elo and Calibration
+		survivor.elo = target.elo;
+		survivor.placementMatchesLeft = target.placementMatchesLeft;
+
+		// 2. Scavenge missing metadata
+		if ((!survivor.series || survivor.series === 'Unknown Series') && target.series && target.series !== 'Unknown Series') {
+			survivor.series = target.series;
+		}
+		if ((!survivor.imageUrl || survivor.imageUrl.trim() === '') && target.imageUrl) {
+			survivor.imageUrl = target.imageUrl;
+		}
+		if ((!survivor.note || survivor.note.trim() === '') && target.note) {
+			survivor.note = target.note;
+		}
+
+		// 3. Delete target
+		service.characters.splice(targetIndex, 1);
+
+		if (direction === -1) {
+			service.activeIndex--;
+		}
+
+		// 4. Cleanup UI
+		service.sortArrayByElo();
+		service.minimizeActiveCard(true);
+
+		Utilities.showSuccess(`Merged data! ${survivor.name} absorbed the old entry's stats and missing info.`, true);
+
+		// 5. FIX: Force the controller to save the newly merged state to localStorage immediately!
+		$rootScope.$broadcast('charactersUpdated');
 	};
 
 	// --- Cascading Links ---

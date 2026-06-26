@@ -108,6 +108,12 @@
 					⚡ Insert
 				</button>
 			</div>
+			<button class="CharacterActionBtn MergeBtn"
+					data-ng-click="absorbAdjacent(1)"
+					data-ng-disabled="!canMerge(1)"
+					title="Absorb the character to the right (Merge Down)">
+    			<i class="fas fa-object-group"></i> Merge Right &rarr;
+			</button>
 			<div class="CharacterSkip">
 				<label data-mudr-skip-input><input type="checkbox" data-ng-model="c.skip" data-ng-change="saveState()" />Skip?</label><span class="CharacterDelete" title="Delete Character" data-mudr-card-delete>&#128465;</span>
 			</div>

@@ -623,3 +623,34 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
     .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterSeries { width: 40%; }
     .ListMode .CharacterThumb:not(.CharacterFull):not(.NewCharacterCard) .CharacterNote { width: 20%; }
 }
+
+/* --- Merge Button --- */
+.MergeBtn {
+    display: none;
+
+    background-color: #6a1b9a;
+    color: white;
+    border: none;
+    transition: opacity 0.3s ease, background-color 0.3s ease, transform 0.1s ease;
+
+    margin-top: 5px;
+    width: 100%;
+    padding: 4px 0;
+}
+
+.CharacterFull .MergeBtn {
+    display: block;
+}
+
+.MergeBtn:hover:not(:disabled) {
+    background-color: #8e24aa;
+    transform: translateY(-1px);
+    cursor: pointer;
+}
+
+.MergeBtn:disabled {
+    opacity: 0.3;
+    background-color: #555;
+    cursor: not-allowed;
+    box-shadow: none;
+}

@@ -134,6 +134,22 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		}
 	};
 
+	// --- Merge / Absorb Logic ---
+	$scope.absorbAdjacent = function(direction) {
+		Characters.absorbAdjacent(direction);
+	};
+
+	$scope.canMerge = function(direction) {
+		if (Characters.getRankingInProgress() || Characters.mode !== Characters.Modes.Edit) return false;
+
+		const activeIdx = Characters.activeIndex;
+		if (activeIdx >= 0) {
+			const targetIdx = activeIdx + direction;
+			return targetIdx >= 0 && targetIdx < Characters.getCharacters().length;
+		}
+		return false;
+	};
+
 	// --- HOTKEYS ---
 	document.addEventListener('keydown', function(event) {
 		if ($scope.getModeClassName() === 'RankMode') {
