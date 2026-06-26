@@ -856,16 +856,31 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const flagged = service.getFlaggedCharacters();
 		const targetList = flagged.length > 0 ? flagged : service.characters.filter(c => !c.skip);
 
-		// Clean and minimize the target link just like the database engine expects
-		const sanitizedLink = Utilities.minimizeName(targetCharacterName);
+		if (!targetCharacterName || targetCharacterName.trim() === '') return 0;
 
+		const searchLower = targetCharacterName.trim().toLowerCase();
+		let finalLinkText = targetCharacterName.trim();
+
+		// 1. Scan the database to find the canonical leader card
+		const leader = service.characters.find(char =>
+			(char.originalName && char.originalName.toLowerCase() === searchLower) ||
+			(char.minimizedName && char.minimizedName.toLowerCase() === searchLower)
+		);
+
+		if (leader) {
+			// 2. If the character exists, ground the foreign key to its true minimized identity
+			finalLinkText = leader.minimizedName;
+		}
+
+		// 3. Batch apply the sanitized reference to targets
 		let updatedCount = 0;
 		targetList.forEach(c => {
-			c.skip = true; // Forcing skip to true because an un-skipped character cannot hold a link pointer
-			c.linkedTo = sanitizedLink;
+			/** @type {Object} */ (c).skip = true;
+			/** @type {Object} */ (c).linkedTo = finalLinkText;
 			updatedCount++;
 		});
 
+		// 4. Force compilation and sorting matrix updates
 		service.reapplyLinks();
 
 		return updatedCount;
