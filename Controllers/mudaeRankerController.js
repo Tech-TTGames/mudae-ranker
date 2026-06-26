@@ -97,7 +97,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			}
 
 			// Trigger 1: Save when a card is manually dragged
-			saveToLocalStorage();
+			saveState();
 		}
 	};
 
@@ -123,7 +123,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		return $scope.characters.length;
 	}, function(newVal, oldVal) {
 		if (newVal !== oldVal) {
-			saveToLocalStorage();
+			saveState();
 		}
 	});
 
@@ -132,7 +132,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		return Characters.getModeClassName();
 	}, function(newValue, oldValue) {
 		if (oldValue === 'RankMode' && newValue === 'EditMode') {
-			saveToLocalStorage();
+			saveState();
 		}
 	});
 
@@ -179,7 +179,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 
 	$scope.clearAllFlags = function() {
 		Characters.clearAllFlags();
-		saveToLocalStorage();
+		saveState();
 		$rootScope.$broadcast('charactersUpdated');
 	};
 
@@ -187,7 +187,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		Characters.massDeleteFlagged().then(() => {
 			// Force immediate DOM reconciliation after async modal closes
 			$scope.$apply(() => {
-				saveToLocalStorage();
+				saveState();
 				$rootScope.$broadcast('charactersUpdated');
 			});
 		}).catch(() => {});
@@ -208,7 +208,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Utilities.showSuccess(`Updated local notes for ${count} character(s).`, true);
 
 			// Sync layout instantly
-			saveToLocalStorage();
+			saveState();
 			$rootScope.$broadcast('charactersUpdated');
 		}
 	};
@@ -228,7 +228,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Utilities.showSuccess(`Successfully set ${actionStr} status.`, true);
 
 			// Sync layout instantly
-			saveToLocalStorage();
+			saveState();
 			$rootScope.$broadcast('charactersUpdated');
 			if (!$scope.$$phase) { $scope.$apply(); }
 		}
@@ -249,7 +249,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Utilities.showSuccess(`Chained dependents behind "${targetName.trim()}".`, true);
 
 			// Sync layout instantly
-			saveToLocalStorage();
+			saveState();
 			$rootScope.$broadcast('charactersUpdated');
 			if (!$scope.$$phase) { $scope.$apply(); }
 		}

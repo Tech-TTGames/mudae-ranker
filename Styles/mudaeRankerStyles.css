@@ -465,7 +465,10 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
     backdrop-filter: blur(4px);
     bottom: 0; display: none; left: 0; position: fixed; right: 0; top: 0; z-index: -1;
 }
-.RankMode .RankingBlocker { display: block; z-index: auto; }
+.RankMode .RankingBlocker {
+    display: block;
+    z-index: 10000 !important;
+}
 .RankMode .CharacterClose { display: none; }
 
 .RankingContainer {
@@ -477,6 +480,7 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     display: none;
     padding: 10px;
+    z-index: 10001 !important;
 }
 
 /* --- Ranking Modal Header (Flexbox Upgrade) --- */
