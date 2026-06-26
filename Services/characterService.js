@@ -886,10 +886,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		return updatedCount;
 	};
 
-	// Smart Note Export: Works for selected OR all
+	// --- Smart Note Export: Includes Skipped Characters ---
 	service.exportNoteCommand = () => {
 		const flagged = service.getFlaggedCharacters();
-		const targetList = flagged.length > 0 ? flagged : service.characters.filter(c => !c.skip);
+		const targetList = flagged.length > 0 ? flagged : [...service.characters];
 
 		if (targetList.length === 0) {
 			Utilities.showError('No characters available to export.', true);
@@ -913,28 +913,24 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		// 2. Dynamically pack chunks up to Discord's limit
 		let output = '';
-		const MAX_DISCORD_LENGTH = 1900; // Safe buffer below 2000
+		const MAX_DISCORD_LENGTH = 1900;
 
 		for (const [noteText, names] of Object.entries(noteGroups)) {
 			let currentNames = [];
-			let currentLength = `$note $${noteText}`.length; // Base size of the command wrapper
+			let currentLength = `$note $${noteText}`.length;
 
 			for (let i = 0; i < names.length; i++) {
-				// Calculate length of adding this name (+1 for the '$' separator if not the first name)
 				const nameLen = names[i].length + (currentNames.length > 0 ? 1 : 0);
 
 				if (currentLength + nameLen > MAX_DISCORD_LENGTH) {
-					// Pushed to the limit! Flush the current chunk and reset.
 					output += `$note ${currentNames.join('$')}$${noteText}\n`;
 					currentNames = [names[i]];
 					currentLength = `$note $${noteText}`.length + names[i].length;
 				} else {
-					// Safe to add
 					currentNames.push(names[i]);
 					currentLength += nameLen;
 				}
 			}
-			// Flush whatever is left over
 			if (currentNames.length > 0) {
 				output += `$note ${currentNames.join('$')}$${noteText}\n`;
 			}
@@ -943,10 +939,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		Utilities.showSuccess(output.trim(), false);
 	};
 
-	// --- Smart Sort Export: Dynamic Overlap Chunking ---
+	// --- Smart Sort Export: Includes Skipped & Linked Chains ---
 	service.exportSort = () => {
 		const flagged = service.getFlaggedCharacters();
-		const targetList = flagged.length > 0 ? flagged : service.characters.filter(c => !c.skip);
+		const targetList = flagged.length > 0 ? flagged : [...service.characters];
 		const total = targetList.length;
 
 		if (total === 0) {
@@ -958,6 +954,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			return;
 		}
 
+		// Ensure the local clone matches absolute Elo alignment
 		targetList.sort((a, b) => b.elo - a.elo);
 
 		let output = '';
@@ -973,18 +970,13 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 				const nextAddition = `$${targetList[i].originalName}`;
 
 				if (currentChunk.length + nextAddition.length > MAX_DISCORD_LENGTH) {
-					// Chunk is full! Save it to output...
 					output += currentChunk + '\n\n';
-
-					// ...and start a new chunk.
 					currentChunk = `$smp ${targetList[i-1].originalName}${nextAddition}`;
 				} else {
-					// Safe to keep packing characters into this chunk
 					currentChunk += nextAddition;
 				}
 			}
 
-			// Flush the final chunk (ensure we don't just print an empty overlap anchor)
 			if (currentChunk !== `$smp ${targetList[total - 1].originalName}`) {
 				output += currentChunk + '\n\n';
 			}
