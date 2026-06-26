@@ -300,14 +300,19 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	};
 
 	$scope.initCloudSync = function() {
-		const urlParams = new URLSearchParams(window.location.search);
-		const code = urlParams.get('code');
-
-		// Expose connection state helper to the UI template
 		$scope.isCloudConnected = function() {
 			return !!localStorage.getItem('gh_sync_token');
 		};
 
+		const urlParams = new URLSearchParams(window.location.search);
+		const code = urlParams.get('code');
+
+		const cloudToken = localStorage.getItem('gh_sync_token');
+		const activeGistId = localStorage.getItem('gh_sync_gist_id');
+
+		// ==========================================================================
+		// CASE A: User just returned from GitHub Auth Redirect (Linking Session)
+		// ==========================================================================
 		if (code) {
 			const workerUrl = "/a/token";
 			Utilities.showSuccess("Exchanging authorization keys...", false);
@@ -315,31 +320,74 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Characters.exchangeAuthCodeForToken(workerUrl, code).then(token => {
 				localStorage.setItem('gh_sync_token', token);
 
-				// Run our discovery matrix check
 				return Characters.findOrCreateSyncGist(token).then(gistInfo => {
 					localStorage.setItem('gh_sync_gist_id', gistInfo.id);
 
 					if (!gistInfo.isNew) {
-						// Device sync activated: pull remote cloud layout down
+						// A cloud save exists, but we might have unsaved local work right now!
 						return Characters.loadFromGist(token, gistInfo.id).then(cloudData => {
-							if (cloudData && cloudData.length > 0) {
-								Characters.characters = cloudData;
-								saveToLocalStorage(); // Lock cache locally
-								$rootScope.$broadcast('charactersUpdated');
+							const localData = Characters.getCharacters();
+
+							// If local storage is empty, skip the prompt and pull down immediately
+							if (!localData || localData.length === 0) {
+								if (cloudData && cloudData.length > 0) {
+									Characters.characters = cloudData;
+									saveToLocalStorage();
+									$rootScope.$broadcast('charactersUpdated');
+								}
+								Utilities.showSuccess("Connected! Loaded your save layout from the cloud.", true);
 							}
-							Utilities.showSuccess("Connected! Synced your character data from the cloud.", true);
+							// Conflict resolution: Ask the user who wins the fight
+							else if (window.confirm("An existing cloud save was found!\n\nClick 'OK' to LOAD your cloud save (this will overwrite your current screen).\n\nClick 'Cancel' to KEEP your current screen and overwrite the cloud instead.")) {
+								// User chose Cloud data
+								if (cloudData && cloudData.length > 0) {
+									Characters.characters = cloudData;
+									saveToLocalStorage();
+									$rootScope.$broadcast('charactersUpdated');
+								}
+								Utilities.showSuccess("Connected! Synced your data down from the cloud.", true);
+							} else {
+								// User chose Local data -> Force push local data up to the Gist right now
+								return Characters.saveToGist(token, gistInfo.id, localData).then(() => {
+									Utilities.showSuccess("Connected! Cloud save updated with your current local layout.", true);
+								});
+							}
 						});
 					} else {
 						Utilities.showSuccess("Connected! Created a fresh private save slot in your cloud.", true);
 					}
 				});
 			}).catch(err => {
-				Utilities.showError("GitHub Sync Activation Failed: " + err.message, true);
+				const errorMsg = (err.data && err.data.error) || err.message || "Network link failed.";
+				Utilities.showError("GitHub Sync Activation Failed: " + errorMsg, true);
 			}).finally(() => {
+				// Scrub code parameters out of the URL string cleanly
 				urlParams.delete('code');
 				const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
 				window.history.replaceState({}, document.title, newUrl);
 				if (!$scope.$$phase) { $scope.$apply(); }
+			});
+		}
+		// ==========================================================================
+		// CASE B: Regular Bootup (Already logged in, no code in URL)
+		// ==========================================================================
+		else if (cloudToken && activeGistId) {
+			// Quietly fetch the master cloud file to bring this browser up to date
+			Characters.loadFromGist(cloudToken, activeGistId).then(cloudData => {
+				if (cloudData && cloudData.length > 0) {
+					const currentLocalState = JSON.stringify(Characters.getCharacters());
+					const incomingCloudState = JSON.stringify(cloudData);
+
+					// Only trigger heavy structural array shifts if the incoming cloud data is actually different
+					if (currentLocalState !== incomingCloudState) {
+						Characters.characters = cloudData;
+						saveToLocalStorage(); // Lock cache locally
+						$rootScope.$broadcast('charactersUpdated');
+						console.log("☁️ Application state successfully synced with latest GitHub cloud data.");
+					}
+				}
+			}).catch(err => {
+				console.error("❌ Failed to download background cloud sync on boot:", err);
 			});
 		}
 	};
