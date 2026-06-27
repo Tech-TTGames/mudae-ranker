@@ -106,9 +106,6 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			if (!Characters.getRankingInProgress()) {
 				Characters.reapplyLinks();
 			}
-
-			// Trigger 1: Save when a card is manually dragged
-			saveState();
 		}
 	};
 
@@ -128,24 +125,6 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			}
 		}
 	}, 500);
-
-	// Trigger 2: Save immediately when "Parse Input" adds characters (or when you delete one)
-	$scope.$watch(function() {
-		return $scope.characters.length;
-	}, function(newVal, oldVal) {
-		if (newVal !== oldVal) {
-			saveState();
-		}
-	});
-
-	// Trigger 3: Save when Ranking Mode is closed (Clicking "X" or finishing all comparisons)
-	$scope.$watch(function() {
-		return Characters.getModeClassName();
-	}, function(newValue, oldValue) {
-		if (oldValue === 'RankMode' && newValue === 'EditMode') {
-			saveState();
-		}
-	});
 
 	$scope.getFlaggedCharacters = function() {
 		return $scope.characters.filter(function(c) { return c.flag && !c.skip; });
@@ -292,9 +271,9 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		}
 	});
 
-	// Listen for the background AniList fetch completion and commit data to disk
+	// Listen for the background character changes.
 	$scope.$on('charactersUpdated', function() {
-		saveState();
+		$scope.saveState();
 	});
 
 	$scope.connectCloudSync = function() {

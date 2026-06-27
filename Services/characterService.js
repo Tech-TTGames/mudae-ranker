@@ -68,7 +68,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const prevChar = newIndex > 0 ? service.characters[newIndex - 1] : null;
 		const nextChar = newIndex < service.characters.length - 1 ? service.characters[newIndex + 1] : null;
 
-		// FIX: Sanitize Elo inputs to prevent NaN corruption from dirty legacy data structures
 		const safeElo = (char) => {
 			if (!char || typeof char.elo !== 'number' || Number.isNaN(char.elo)) {
 				return EloEngine.DEFAULT_ELO;
@@ -86,6 +85,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		} else if (nextChar) {
 			movedChar.elo = nextElo + 10; // Dropped at the absolute top
 		}
+
+		$rootScope.$broadcast('charactersUpdated');
 	};
 
 	// --- UI Getters & State Checkers ---
@@ -133,13 +134,13 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 					service.characters.splice(service.activeIndex, 1);
 					service.activeIndex = -1;
 					service.inMessageBox = false;
+					$rootScope.$broadcast('charactersUpdated');
 					resolve();
 				}).fail(() => {
 					service.inMessageBox = false;
 					reject();
 				});
 			} else {
-				// FIX: Instant resolution prevents hanging when conditions are unfulfilled
 				resolve();
 			}
 		});
@@ -153,6 +154,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		placementState.active = false;
 		placementState.queue = [];
+		$rootScope.$broadcast('charactersUpdated');
 		return service.characters;
 	};
 
@@ -184,6 +186,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		if (!$rootScope.$$phase) {
 			$rootScope.$apply();
 		}
+		$rootScope.$broadcast('charactersUpdated');
 	};
 
 	service.addNewCharacter = (originalName, seriesName, imageUrl, skip) => {
@@ -409,6 +412,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			service.sortArrayByElo();
 			if (service._rankingContainer) service._rankingContainer.style.display = '';
 			Utilities.showSuccess('Placement matches complete!', true);
+			$rootScope.$broadcast('charactersUpdated');
 			return false;
 		}
 
@@ -491,6 +495,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		service.sortArrayByElo();
 		placementState.target.placementMatchesLeft--;
+		$rootScope.$broadcast('charactersUpdated');
 		return service.nextPlacementMatch();
 	};
 
@@ -688,6 +693,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 
 		if (service._rankingContainer) service._rankingContainer.style.display = 'block';
+		$rootScope.$broadcast('charactersUpdated');
 		return true;
 	};
 
@@ -734,6 +740,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			service._currentRightIndex = displayCards.rightCompareIndex;
 			service.leftCompare = service._rankedCharacters[service._currentLeftIndex];
 			service.rightCompare = service._rankedCharacters[service._currentRightIndex];
+
+			$rootScope.$broadcast('charactersUpdated');
 		} else {
 			service.endRankMode();
 		}
@@ -774,6 +782,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		service.mode = Mode.Edit;
 		service.sortArrayByElo();
+		$rootScope.$broadcast('charactersUpdated');
 	};
 
 	service.updateCharacterImage = (index, source) => {
@@ -1025,6 +1034,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 				}
 				service.sortArrayByElo();
 				Utilities.showSuccess('Done processing the input', true);
+				$rootScope.$broadcast('charactersUpdated');
 			} catch(e) {
 				Utilities.showError('Well, you screwed something up: ' + e.message, true);
 			}
@@ -1122,6 +1132,9 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			Utilities.showWarning('Looking up characters from AniList', true);
 			service.anilistReqInterval = $interval(service.fetchSeries, 800, 0, true, seriesArray);
 			service.anilistReqInterval.then(service.requestIntervalResolve, service.requestIntervalReject);
+		} else {
+			Utilities.showSuccess('Done processing the input', true);
+			$rootScope.$broadcast('charactersUpdated');
 		}
 	};
 
