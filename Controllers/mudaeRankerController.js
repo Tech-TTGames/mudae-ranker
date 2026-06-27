@@ -100,12 +100,13 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	$scope.sortableConfig = {
 		handle: mql.matches ? '.DragHandle' : '',
 		onEnd: function (event) {
-			Characters.dragAndDropSortEnd(event);
+			$timeout(function() {
+				Characters.dragAndDropSortEnd(event);
 
-			// If we just dragged a card in Edit Mode, snap the linked characters to their targets
-			if (!Characters.getRankingInProgress()) {
-				Characters.reapplyLinks();
-			}
+				if (!Characters.getRankingInProgress()) {
+					Characters.reapplyLinks();
+				}
+			}, 0);
 		}
 	};
 
