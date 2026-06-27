@@ -324,7 +324,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 							// If local storage is empty, skip the prompt and pull down immediately
 							if (!localData || localData.length === 0) {
 								if (cloudData && cloudData.length > 0) {
-									Characters.characters = cloudData;
+									Characters.updateAll(cloudData);
 									lastSyncedCloudState = JSON.stringify(cloudData);
 									saveToLocalStorage();
 									$rootScope.$broadcast('charactersUpdated');
@@ -335,7 +335,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 							else if (window.confirm("An existing cloud save was found!\n\nClick 'OK' to LOAD your cloud save (this will overwrite your current screen).\n\nClick 'Cancel' to KEEP your current screen and overwrite the cloud instead.")) {
 								// User chose Cloud data
 								if (cloudData && cloudData.length > 0) {
-									Characters.characters = cloudData;
+									Characters.updateAll(cloudData);
 									lastSyncedCloudState = JSON.stringify(cloudData);
 									saveToLocalStorage();
 									$rootScope.$broadcast('charactersUpdated');
@@ -376,7 +376,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 
 					// Only trigger heavy structural array shifts if the incoming cloud data is actually different
 					if (currentLocalState !== incomingCloudState) {
-						Characters.characters = cloudData;
+						Characters.updateAll(cloudData);
 						lastSyncedCloudState = JSON.stringify(cloudData);
 						saveToLocalStorage(); // Lock cache locally
 						$rootScope.$broadcast('charactersUpdated');
