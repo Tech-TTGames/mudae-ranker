@@ -46,9 +46,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		if ($scope.listMode) $scope.ghostMode = false;
 	};
 
-	function saveState() {
-		saveToLocalStorage();
-
+	function savetoCloudStorage() {
 		const cloudToken = localStorage.getItem('gh_sync_token');
 		const activeGistId = localStorage.getItem('gh_sync_gist_id');
 
@@ -91,10 +89,14 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	}
 
 	$scope.saveState = function() {
+		// INSTANT: Bulletproof local backup so no data is ever lost if the tab closes
+		saveToLocalStorage();
+
+		// DELAYED: Safely batch GitHub API calls
 		if (saveTimer) $timeout.cancel(saveTimer);
 		saveTimer = $timeout(function() {
-			saveState();
-		}, 1000); // Waits 1 second after you stop typing to save
+			savetoCloudStorage();
+		}, 10000);
 	};
 
 	$scope.sortableConfig = {
