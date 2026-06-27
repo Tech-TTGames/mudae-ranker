@@ -33,6 +33,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	$scope.listMode = false;
 
 	var saveTimer = null;
+	var lastSyncedCloudState = null;
 	const mql = window.matchMedia("(width <= 600px)");
 
 	$scope.toggleGhostMode = function() {
@@ -52,9 +53,19 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		const activeGistId = localStorage.getItem('gh_sync_gist_id');
 
 		if (cloudToken && activeGistId) {
-			Characters.saveToGist(cloudToken, activeGistId, Characters.getCharacters())
+			const currentData = Characters.getCharacters();
+			const currentStateString = JSON.stringify(currentData || []);
+
+			// OPTIMIZATION: Skip the PATCH request if the data hasn't mutated
+			if (lastSyncedCloudState === currentStateString) {
+				return;
+			}
+
+			Characters.saveToGist(cloudToken, activeGistId, currentData)
 				.then(() => {
-					console.log("☁️ Cloud sync up-to-date.");
+					// Lock in the new baseline upon success
+					lastSyncedCloudState = currentStateString;
+					console.log("☁️ Cloud sync pushed new changes.");
 				})
 				.catch(err => {
 					console.error("❌ Background cloud sync failed:", err);
@@ -332,6 +343,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 							if (!localData || localData.length === 0) {
 								if (cloudData && cloudData.length > 0) {
 									Characters.characters = cloudData;
+									lastSyncedCloudState = JSON.stringify(cloudData);
 									saveToLocalStorage();
 									$rootScope.$broadcast('charactersUpdated');
 								}
@@ -342,6 +354,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 								// User chose Cloud data
 								if (cloudData && cloudData.length > 0) {
 									Characters.characters = cloudData;
+									lastSyncedCloudState = JSON.stringify(cloudData);
 									saveToLocalStorage();
 									$rootScope.$broadcast('charactersUpdated');
 								}
@@ -350,6 +363,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 								// User chose Local data -> Force push local data up to the Gist right now
 								return Characters.saveToGist(token, gistInfo.id, localData).then(() => {
 									Utilities.showSuccess("Connected! Cloud save updated with your current local layout.", true);
+									lastSyncedCloudState = JSON.stringify(localData);
 								});
 							}
 						});
@@ -381,6 +395,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 					// Only trigger heavy structural array shifts if the incoming cloud data is actually different
 					if (currentLocalState !== incomingCloudState) {
 						Characters.characters = cloudData;
+						lastSyncedCloudState = JSON.stringify(cloudData);
 						saveToLocalStorage(); // Lock cache locally
 						$rootScope.$broadcast('charactersUpdated');
 						console.log("☁️ Application state successfully synced with latest GitHub cloud data.");
