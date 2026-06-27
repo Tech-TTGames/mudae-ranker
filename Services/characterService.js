@@ -89,6 +89,20 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		$rootScope.$broadcast('charactersUpdated');
 	};
 
+	service.handleSkippedCharacter = (index) => {
+		const character = service.characters[index];
+		if (!character) return;
+
+		if (character.skip) {
+			character.elo = service.getLowestElo() - 10;
+		} else {
+			character.linkedTo = '';
+		}
+
+		service.reapplyLinks();
+		$rootScope.$broadcast('charactersUpdated');
+	};
+
 	// --- UI Getters & State Checkers ---
 	service.getCharacters = () => service.characters;
 	service.hasCharacters = () => service.characters.length > 0;
