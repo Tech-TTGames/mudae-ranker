@@ -2,7 +2,7 @@
 
 The ultimate preference-based Mudae collection ranking and management application.
 
-**🌐 Play Live: [muda-rank.ttlabs.org](https://www.google.com/search?q=https://muda-rank.ttlabs.org)**
+**🌐 Play Live: [muda-rank.ttlabs.org](https://muda-rank.ttlabs.org)**
 
 Intended for use with the [Mudae bot for Discord](https://discordbots.org/bot/432610292342587392), this application allows you to manage, sort, and rank your character collection through a series of "X vs Y" preference questions. Once you are done sorting, it automatically generates the exact commands you need to copy-paste into Discord to update your collection's sort order.
 
