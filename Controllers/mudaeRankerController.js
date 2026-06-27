@@ -52,6 +52,10 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 
 		if (cloudToken && activeGistId) {
 			const syncPayload = {
+				appState: {
+					rankingInProgress: Characters.getRankingInProgress(),
+					preferenceState: PreferenceList.getState()
+				},
 				characters: Characters.getCharacters(),
 				tierConfig: $scope.tierConfig
 			};
@@ -121,16 +125,30 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		});
 	}
 
-	$timeout(function() {
-		var cachedSession = localStorage.getItem('mudaeRankerCache');
+	function loadLocalCacheSynchronously() {
+		const cachedSession = localStorage.getItem('mudaeRankerCache');
 		if (cachedSession) {
 			try {
-				Characters.parseInputField(cachedSession);
+				const parsed = angular.fromJson(cachedSession);
+
+				// Restore active ranking sessions
+				if (parsed.appState) {
+					if (parsed.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
+					if (parsed.appState.preferenceState) PreferenceList.setState(parsed.appState.preferenceState);
+				}
+
+				// Bypass the parser's 'merge' logic to ensure a clean boot
+				const chars = parsed.characters ? parsed.characters : (Array.isArray(parsed) ? parsed : []);
+				if (chars.length > 0) {
+					Characters.updateAll(chars);
+				}
 			} catch (e) {
-				console.error("Failed to parse local cache:", e);
+				console.error("Failed to load local cache:", e);
 			}
 		}
-	}, 500);
+	}
+	// Execute immediately on controller load
+	loadLocalCacheSynchronously();
 
 	$scope.getFlaggedCharacters = function() {
 		return $scope.characters.filter(function(c) { return c.flag && !c.skip; });
@@ -373,6 +391,11 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 										$scope.saveTierConfig();
 									}
 
+									if (cloudData.appState) {
+										if (cloudData.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
+										if (cloudData.appState.preferenceState) PreferenceList.setState(cloudData.appState.preferenceState);
+									}
+
 									lastSyncedCloudState = angular.toJson(cloudData);
 									saveToLocalStorage();
 								}
@@ -390,6 +413,11 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 									if (cloudData.tierConfig) {
 										$scope.tierConfig = cloudData.tierConfig;
 										$scope.saveTierConfig();
+									}
+
+									if (cloudData.appState) {
+										if (cloudData.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
+										if (cloudData.appState.preferenceState) PreferenceList.setState(cloudData.appState.preferenceState);
 									}
 
 									lastSyncedCloudState = angular.toJson(cloudData);
@@ -442,6 +470,11 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 						if (cloudData.tierConfig) {
 							$scope.tierConfig = cloudData.tierConfig;
 							$scope.saveTierConfig();
+						}
+
+						if (cloudData.appState) {
+							if (cloudData.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
+							if (cloudData.appState.preferenceState) PreferenceList.setState(cloudData.appState.preferenceState);
 						}
 
 						lastSyncedCloudState = incomingCloudState;
