@@ -748,7 +748,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		service._rankingContainer.style.display = 'block';
 	};
 
-	service.startRankMode = () => {
+	service.setupRankMode = () => {
 		service.mode = Mode.RankFinite;
 		service._initializeRankMode();
 		service._rankedCharacters = [];
@@ -759,20 +759,16 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			else service._rankedCharacters.push(character);
 		});
 
+	}
+
+	service.startRankMode = () => {
+		service.setupRankMode();
 		PreferenceList.resetToCount(service._rankedCharacters.length);
 		service.presentCardsForComparison();
 	};
 
 	service.resumeRankMode = () => {
-		service.mode = Mode.RankFinite;
-		service._initializeRankMode();
-		service._rankedCharacters = [];
-		service._discardedCharacters = [];
-
-		service.characters.forEach(character => {
-			if (character.skip) service._discardedCharacters.push(character);
-			else service._rankedCharacters.push(character);
-		});
+		service.setupRankMode();
 
 		PreferenceList.resume(service._rankedCharacters.length);
 		service.presentCardsForComparison();

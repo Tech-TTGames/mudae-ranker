@@ -32,8 +32,8 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	$scope.ghostMode = false;
 	$scope.listMode = false;
 
-	var saveTimer = null;
-	var lastSyncedCloudState = null;
+	let saveTimer = null;
+	let lastSyncedCloudState = null;
 	const mql = window.matchMedia("(width <= 600px)");
 
 	$scope.toggleGhostMode = function() {
@@ -46,19 +46,42 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		if ($scope.listMode) $scope.ghostMode = false;
 	};
 
+	function buildSavePayload() {
+		return {
+			appState: {
+				rankingInProgress: Characters.getRankingInProgress(),
+				preferenceState: PreferenceList.getState()
+			},
+			characters: Characters.getCharacters(),
+			tierConfig: $scope.tierConfig
+		};
+	}
+
+	function loadSavePayload(payload) {
+		const parsed = angular.fromJson(payload);
+
+		if (parsed.appState) {
+			if (parsed.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
+			if (parsed.appState.preferenceState) PreferenceList.setState(parsed.appState.preferenceState);
+		}
+
+		const chars = parsed.characters ? parsed.characters : (Array.isArray(parsed) ? parsed : []);
+		if (chars.length > 0) {
+			Characters.updateAll(chars);
+		}
+
+		if (parsed.tierConfig) {
+			$scope.tierConfig = parsed.tierConfig;
+			$scope.saveTierConfig();
+		}
+	}
+
 	function savetoCloudStorage() {
 		const cloudToken = localStorage.getItem('gh_sync_token');
 		const activeGistId = localStorage.getItem('gh_sync_gist_id');
 
 		if (cloudToken && activeGistId) {
-			const syncPayload = {
-				appState: {
-					rankingInProgress: Characters.getRankingInProgress(),
-					preferenceState: PreferenceList.getState()
-				},
-				characters: Characters.getCharacters(),
-				tierConfig: $scope.tierConfig
-			};
+			const syncPayload = buildSavePayload();
 			const currentStateString = angular.toJson(syncPayload);
 
 			// OPTIMIZATION: Skip the PATCH request if the data hasn't mutated
@@ -80,15 +103,9 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	}
 
 	function saveToLocalStorage() {
-		var chars = Characters.getCharacters();
+		const chars = Characters.getCharacters();
 		if (chars && chars.length > 0) {
-			var exportData = {
-				appState: {
-					rankingInProgress: Characters.getRankingInProgress(),
-					preferenceState: PreferenceList.getState()
-				},
-				characters: chars
-			};
+			const exportData = buildSavePayload();
 			localStorage.setItem('mudaeRankerCache', angular.toJson(exportData));
 		} else {
 			localStorage.removeItem('mudaeRankerCache');
@@ -129,19 +146,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		const cachedSession = localStorage.getItem('mudaeRankerCache');
 		if (cachedSession) {
 			try {
-				const parsed = angular.fromJson(cachedSession);
-
-				// Restore active ranking sessions
-				if (parsed.appState) {
-					if (parsed.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
-					if (parsed.appState.preferenceState) PreferenceList.setState(parsed.appState.preferenceState);
-				}
-
-				// Bypass the parser's 'merge' logic to ensure a clean boot
-				const chars = parsed.characters ? parsed.characters : (Array.isArray(parsed) ? parsed : []);
-				if (chars.length > 0) {
-					Characters.updateAll(chars);
-				}
+				loadSavePayload(cachedSession)
 			} catch (e) {
 				console.error("Failed to load local cache:", e);
 			}
@@ -159,7 +164,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Utilities.showSuccess('Starting placement matches for ' + queue.length + ' character(s).', true);
 		}
 
-		var isInserting = Characters.startPlacementMatches(queue);
+		const isInserting = Characters.startPlacementMatches(queue);
 		if (isInserting) {
 			document.getElementById('RankingContainer').style.display = 'block';
 		}
@@ -193,7 +198,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 
 	$scope.clearAllFlags = function() {
 		Characters.clearAllFlags();
-		saveState();
+		$scope.saveState();
 		$rootScope.$broadcast('charactersUpdated');
 	};
 
@@ -201,7 +206,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		Characters.massDeleteFlagged().then(() => {
 			// Force immediate DOM reconciliation after async modal closes
 			$scope.$apply(() => {
-				saveState();
+				$scope.saveState();
 				$rootScope.$broadcast('charactersUpdated');
 			});
 		}).catch(() => {});
@@ -222,7 +227,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Utilities.showSuccess(`Updated local notes for ${count} character(s).`, true);
 
 			// Sync layout instantly
-			saveState();
+			$scope.saveState();
 			$rootScope.$broadcast('charactersUpdated');
 		}
 	};
@@ -277,7 +282,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Utilities.showSuccess(`Successfully set ${actionStr} status.`, true);
 
 			// Sync layout instantly
-			saveState();
+			$scope.saveState();
 			$rootScope.$broadcast('charactersUpdated');
 			if (!$scope.$$phase) { $scope.$apply(); }
 		}
@@ -298,7 +303,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Utilities.showSuccess(`Chained dependents behind "${targetName.trim()}".`, true);
 
 			// Sync layout instantly
-			saveState();
+			$scope.saveState();
 			$rootScope.$broadcast('charactersUpdated');
 			if (!$scope.$$phase) { $scope.$apply(); }
 		}
@@ -307,7 +312,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	// --- HOTKEYS ---
 	document.addEventListener('keydown', function(event) {
 		if ($scope.getModeClassName() === 'RankMode') {
-			var validKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
+			const validKeys = ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"];
 
 			// Handle Ctrl+Z for Undo
 			if (event.ctrlKey && event.key === 'z') {
@@ -333,6 +338,16 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	// Listen for the background character changes.
 	$scope.$on('charactersUpdated', function() {
 		$scope.saveState();
+	});
+
+	// Protect against closing the tab while a 10-second cloud sync is pending
+	window.addEventListener('beforeunload', function (e) {
+		if (saveTimer) {
+			$timeout.cancel(saveTimer);
+			savetoCloudStorage();
+			e.preventDefault();
+			e.returnValue = '';
+		}
 	});
 
 	// --- LOAD & SYNC ---
@@ -381,22 +396,8 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 							// If local storage is empty, skip the prompt and pull down immediately
 							if (!localData || localData.length === 0) {
 								if (cloudData) {
-									const incomingChars = cloudData.characters ? cloudData.characters : (Array.isArray(cloudData) ? cloudData : []);
-									if (incomingChars.length > 0) {
-										Characters.updateAll(incomingChars);
-									}
-
-									if (cloudData.tierConfig) {
-										$scope.tierConfig = cloudData.tierConfig;
-										$scope.saveTierConfig();
-									}
-
-									if (cloudData.appState) {
-										if (cloudData.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
-										if (cloudData.appState.preferenceState) PreferenceList.setState(cloudData.appState.preferenceState);
-									}
-
-									lastSyncedCloudState = angular.toJson(cloudData);
+									loadSavePayload(cloudData);
+									lastSyncedCloudState = angular.toJson(buildSavePayload());
 									saveToLocalStorage();
 								}
 								Utilities.showSuccess("Connected! Loaded your save layout from the cloud.", true);
@@ -405,22 +406,8 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 							else if (window.confirm("An existing cloud save was found!\n\nClick 'OK' to LOAD your cloud save (this will overwrite your current screen).\n\nClick 'Cancel' to KEEP your current screen and overwrite the cloud instead.")) {
 								// User chose Cloud data
 								if (cloudData) {
-									const incomingChars = cloudData.characters ? cloudData.characters : (Array.isArray(cloudData) ? cloudData : []);
-									if (incomingChars.length > 0) {
-										Characters.updateAll(incomingChars);
-									}
-
-									if (cloudData.tierConfig) {
-										$scope.tierConfig = cloudData.tierConfig;
-										$scope.saveTierConfig();
-									}
-
-									if (cloudData.appState) {
-										if (cloudData.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
-										if (cloudData.appState.preferenceState) PreferenceList.setState(cloudData.appState.preferenceState);
-									}
-
-									lastSyncedCloudState = angular.toJson(cloudData);
+									loadSavePayload(cloudData);
+									lastSyncedCloudState = angular.toJson(buildSavePayload());
 									saveToLocalStorage();
 								}
 								Utilities.showSuccess("Connected! Synced your data down from the cloud.", true);
@@ -455,31 +442,17 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Characters.loadFromGist(cloudToken, activeGistId).then(cloudData => {
 				if (cloudData) {
 					// Build the current local state string matching the new payload structure
-					const currentLocalState = angular.toJson({
-						characters: Characters.getCharacters(),
-						tierConfig: $scope.tierConfig
-					});
+					const currentLocalState = angular.toJson(buildSavePayload());
 					const incomingCloudState = angular.toJson(cloudData);
 
 					if (currentLocalState !== incomingCloudState) {
-						const incomingChars = cloudData.characters ? cloudData.characters : (Array.isArray(cloudData) ? cloudData : []);
-						if (incomingChars.length > 0) {
-							Characters.updateAll(incomingChars);
-						}
-
-						if (cloudData.tierConfig) {
-							$scope.tierConfig = cloudData.tierConfig;
-							$scope.saveTierConfig();
-						}
-
-						if (cloudData.appState) {
-							if (cloudData.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
-							if (cloudData.appState.preferenceState) PreferenceList.setState(cloudData.appState.preferenceState);
-						}
-
-						lastSyncedCloudState = incomingCloudState;
+						loadSavePayload(cloudData);
+						lastSyncedCloudState = angular.toJson(buildSavePayload()); // Normalized!
 						saveToLocalStorage();
 						console.log("☁️ Application state successfully synced with latest GitHub cloud data.");
+					} else {
+						lastSyncedCloudState = currentLocalState;
+						console.log("☁️ Cloud connection verified: Local data is already perfectly up-to-date.");
 					}
 				}
 			}).catch(err => {
