@@ -104,7 +104,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	// --- UI Component Utilities ---
-	// FIX: Added parameter to prevent execution race conditions with Sortable states
 	service.minimizeActiveCard = (skipEnableSortable = false) => {
 		if (service.mode === Mode.Edit && service.activeIndex >= 0) {
 			const aClass = service.characters[service.activeIndex].className;
@@ -874,6 +873,35 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			/** @type {Object} */ (c).note = newNote;
 			updatedCount++;
 		});
+		return updatedCount;
+	};
+
+	service.stratifyNotes = (tierConfig) => {
+		service.reapplyLinks();
+
+		const targetList = service.characters;
+		const total = targetList.length;
+		if (total === 0) return 0;
+
+		let currentListIndex = 0;
+		let updatedCount = 0;
+
+		for (let i = 0; i < tierConfig.length; i++) {
+			const tier = tierConfig[i];
+
+			const chunkSize = (tier.size === -1 || !tier.size) ? (total - currentListIndex) : tier.size;
+
+			for (let j = 0; j < chunkSize; j++) {
+				if (currentListIndex >= total) break;
+
+				const char = targetList[currentListIndex];
+				/** @type {Object} */ (char).note = tier.label;
+
+				updatedCount++;
+				currentListIndex++;
+			}
+		}
+
 		return updatedCount;
 	};
 

@@ -606,3 +606,57 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
 
 .FlashWarning { animation: FlashWarning 1s ease-in; }
 @keyframes FlashWarning { from {background-color: rgb(255,255,0);} to {background-color: rgb(255,255,255);} }
+
+/* ==========================================================================
+   11. AUTO-STRATIFY MODAL
+   ========================================================================== */
+.TierModalBlocker {
+    display: block; /* Lets ng-show control visibility */
+    z-index: 10002 !important;
+}
+
+.TierModalContainer {
+    display: block; /* Lets ng-show control visibility */
+    z-index: 10003 !important;
+    width: 400px;
+    max-width: 95%;
+}
+
+.TierHelperText {
+    font-size: 85%;
+    color: #949ba4;
+    margin-bottom: 15px;
+}
+
+.TierListContainer {
+    max-height: 40vh;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    padding-right: 5px;
+}
+
+.TierListItem {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.TierInputLabel {
+    flex: 2;
+    margin: 0;
+}
+
+.TierInputSize {
+    flex: 1;
+    margin: 0;
+}
+
+.TierBtnRemove {
+    margin: 0;
+    padding: 4px 10px;
+}
+
+.TierModalFooter {
+    display: flex;
+    justify-content: space-between;
+}

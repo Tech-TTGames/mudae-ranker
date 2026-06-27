@@ -80,6 +80,7 @@
 			<div class="Dropdown-content">
 				<button data-ng-click="triggerBatchInsert(getFlaggedCharacters())" data-ng-disabled="getFlaggedCharacters().length === 0">⚡ Batch Insert</button>
 				<button data-ng-click="massEditNotes()">✏️ Edit Local Notes</button>
+				<button data-ng-click="showTierModal = true">📊 Auto-Stratify Notes</button>
 				<button data-ng-click="massSkipCharacters(true)">⏭️ Mass Skip</button>
 				<button data-ng-click="massSkipCharacters(false)">⏪ Mass Un-Skip</button>
 				<button data-ng-click="massLinkAfterPrompt()">🔗 Mass Link After</button>
@@ -224,6 +225,32 @@
 					<button class="CharacterActionBtn BtnPrimary" style="width: 100%;" data-mudr-right-compare-skip>Skip</button>
 				</div>
 			</div>
+		</div>
+	</div>
+	<div class="RankingBlocker TierModalBlocker" data-ng-show="showTierModal"></div>
+	<div class="RankingContainer TierModalContainer" data-ng-show="showTierModal">
+		<div class="RankingContainerTitle">
+			<div class="RankingTitleText">📊 Configure Tiers</div>
+			<div class="RankingControls">
+				<span class="RankingContainerClose" data-ng-click="showTierModal = false" title="Close">✖</span>
+			</div>
+		</div>
+
+		<div class="TierHelperText">
+			Define your tiers from top to bottom. Set a tier's size to <strong>-1</strong> to make it unbounded (it will consume all remaining characters).
+		</div>
+
+		<div class="TierListContainer">
+			<div class="TierListItem" data-ng-repeat="tier in tierConfig">
+				<input type="text" class="CardTextInput TierInputLabel" data-ng-model="tier.label" data-ng-change="saveTierConfig()" placeholder="Tier Label (e.g. ❤️)" aria-label="Tier Label" />
+				<input type="number" class="CardTextInput TierInputSize" data-ng-model="tier.size" data-ng-change="saveTierConfig()" placeholder="Size" aria-label="Tier Size" />
+				<button class="CharacterActionBtn BtnDanger TierBtnRemove" data-ng-click="removeTier($index)" title="Remove Tier">✖</button>
+			</div>
+		</div>
+
+		<div class="TierModalFooter">
+			<button class="CharacterActionBtn BtnPrimary" data-ng-click="addTier()">➕ Add Tier</button>
+			<button class="CharacterActionBtn BtnSuccess" data-ng-click="applyStratification()">🚀 Apply to Collection</button>
 		</div>
 	</div>
 </body>
