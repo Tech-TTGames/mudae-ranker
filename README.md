@@ -1,95 +1,81 @@
 # Mudae Ranker
- Preference-based Mudae collection ranking app
 
-## Summary
-Original concept by: [DarkMage530](https://github.com/jonmervine)
+The ultimate preference-based Mudae collection ranking and management application.
 
-Intended for use with the [Mudae bot for Discord](https://discordbots.org/bot/432610292342587392)
+**🌐 Play Live: [muda-rank.ttlabs.org](https://www.google.com/search?q=https://muda-rank.ttlabs.org)**
 
-This app will allow you to sort your collection based on a series of "x vs y" questions. You will be presented with two characters and asked which one you prefer. When you have completed answering all of the questions, your collection will be sorted based on your responses. It will then generate the commands you need to run in order to sort your collection on Discord
+Intended for use with the [Mudae bot for Discord](https://discordbots.org/bot/432610292342587392), this application allows you to manage, sort, and rank your character collection through a series of "X vs Y" preference questions. Once you are done sorting, it automatically generates the exact commands you need to copy-paste into Discord to update your collection's sort order.
 
-This is something I threw together in my free time, I can't promise that it will be bug free or that every exception case will be handled. Please review the Issues section to see if there's any feature that's not working that you should be aware of. 
+## 🌟 Key Features
 
-Note that this was implemented before the i- option was available, so if the instructions below reference Anilist a lot or in a seemingly strange why, that's why.
+* **Dual-Ranking System:** Choose between Finite Pre-Ranking (standard sorting) or Endless Ranking (Elo-style continuous matchmaking).
+* **Cloud Synchronization:** Link your GitHub account to seamlessly save and sync your layout across your desktop and mobile devices.
+* **Smart Importing:** Retain your existing Discord sort order while automatically fetching high-quality images.
+* **Mass Actions:** Batch insert, mass skip, edit notes, and clear selections with a single click.
+* **View Modes:** Toggle between visual Grid mode, compact List mode, or spoiler-free Ghost mode.
+* **Local Auto-Save:** Never lose your progress; changes are automatically cached to your browser's local storage the moment you make them.
 
-## Basic Instructions
-This will walk you through importing your first batch of characters, sorting them, and then exporting the sort commands. To get started, simply download the project and open index.html in your browser.
-1. Run **$mmai-s** in Discord.
-   - **_NOTE_**: You will be spammed with direct messages from your maid (or Mudae if you don't have a maid) for every character in your collection, so the larger your collection is, the more spam you'll get.
-2. Copy all of the series and character information from the direct message.
-   - Do not copy the collection title or any other information.
-   - Example:
-     ```
-     Tales of Zestiria - 1/12 
-     Edna - https://imgur.com/UAofYTG.jpg
-     Re:Zero kara Hajimeru Isekai Seikatsu - 2/48 
-     Rem (RZ) - https://imgur.com/J7aspQh.gif.gif
-        Ram | 🤷 - https://imgur.com/P9UzNXd.jpg
-     
-     Captain Toad: Treasure Tracker - 1/1 
-        Captain Toad | Should be in Smash Bros - https://imgur.com/lLfBPIK.jpg
-     ```
-3. Paste the copied information into the input field
-4. Click **Parse Input**
-   - At this point, you should see a bunch of thumbnails pop up
-   - If you accidentally ran $mmas instead of $mmai-s, or if an image is not available for a character for some reason, the image should load afterward after being looked up from [Anilist](https://anilist.co/), see the **Anilist** section below for some details related to character lookups.
-5. Once the images are finished showing up, you can click on any thumbnail to view the full card for that character. See the **Character Card** section below for details on what is available on the card.
-   - You can also drag individual characters around to resort them manually
-6. At any point, you can click **Export All Characters** to export a dump of the characters that can be re-imported later. This is highly recommended as it will save all of the image paths for each character, meaning the next time you import, it will not have to look the characters up from Anilist and will be much faster. I recommend saving the dump to a text file with Unicode encoding.
-7. When you're ready, click **Start Ranking**.
-8. The ranking pop up will show you two characters. Click on the one that you prefer.
-   - Note that you can also click the "Skip" button for a character, this will remove the character from the ranking process and throw them at the end of the list. If you want to bring them back, you will have to stop ranking and turn skip back off for them (see **Character Card**)
-   - To stop ranking midway, simply click the ❎ in the popup. The **Resume Ranking** button will enable, allowing you to pick back up from where you left off (see **Important Notes** below).
-9. After you have ranked all characters, the popup will go away and your collection should now be sorted based on your preferences.
-   - It's highly recommended that you click **Export All Characters** at this point so you can import them in the same order they're in now that you've sorted them.
-10. Now you can click **Generate Sort Commands** and the list of commands you need to run to sort your collection on Discord will be shown.
+---
 
-## Character Card
-Full character cards have the following information and controls:
-- Information
-  - The character's name as shown in Mudae
-  - The series the character is from as show in Mudae
-  - A picture of the character
-  - The url of the picture shown
-- Controls
-  - ❎ - Close the card
-  - "Skip?" - If you check this, the card will turn red and the character will not be included in the ranking process. Usually you will do this for characters you have simply for trading or cleaning purposes.
-  - 🗑️ - Delete the character. This will remove them from the list of characters and you will either have to add them back in with the 🆕 button (see **Adding New Characters**), with a merge (see **Merging Instructions**), or by starting over with your last $mmas dump or Mudae Ranker export.
+## 📥 Getting Started (The Perfect Import)
 
-## Merging Instructions
-Claimed a bunch of characters and didn't keep your Mudae Ranker data up-to-date? Shame shame. But hey, that's what merging is for.
-1. Paste your previously saved data into the input field, then click **Parse Input**
-2. Run **$mmai-s** and copy the entire dump just like you did the first time you imported your collection
-3. All new characters will be added and looked up from Anilist if necessary
-   - As a bonus, characters that do not have their images set will also be looked up on Anilist on the off chance that something has changed and their images can be found now. It is actually possible for this to happen!
-4. At this point, you can export the characters, go through the process of ranking, or do whatever.
+To get your collection into the app without losing your current custom sort order, follow these steps exactly:
 
-## Adding New Characters
-Sometimes you just want to add a single new character to your collection and don't feel like using the merge functionality. That's what the 🆕 button is for!
-1. Click the 🆕 button, a popup will display with fields for you to fill out
-2. Fill out the details, copying them from Mudae as they'd show up if you used the **$im** command on the character
-3. Click the ✅ button when you're done to save the character, it will be added to the end of the list
+1. Run **`$mmi-s`** in your Discord server.
+2. Copy the entire output from your Discord DMs (excluding the collection title) and paste it into the app's input field.
+3. Click **Parse Input**. This imports your characters in your exact current layout, but they will be missing images.
+4. Run **`$mmai-s`** in your Discord server. (Mudae forces this command to be alphabetical, but it includes the image URLs).
+5. Copy this new output, paste it into the app, and click **Parse Input** again.
+6. The application will intelligently merge the two lists—keeping your original custom sort order while attaching all the correct images!
 
-## Anilist
-Anilist is the fallback for character image lookups. It was necessary prior to the implementation of the i- option since there was no way to get the images for each character. Most images from Anilist are the same size as the images from Mudae, so they work well for the purpose of this app. There are some limitations when using the Anilist API, so I'll explain those below and their effects on the Mudae Ranker app.
-- Anilist has a limit of 90 requests per minute. I limited the requests to 75 per minute just to be safe. This is one of the biggest slowdowns when it comes to populating the images from Anilist.
-- Requests to Anilist are done by series, and up to 25 characters will be brought back for a series in one request. It's not guaranteed that all characters you own for a series will come back in the first request, so sometimes you need to make additional requests to pull back additional characters for a series.
-- Anilist's query functionality can be really strange, so it may not return results for all series. Sometimes, even if a series is on Anilist, the top result when searching for that series name will be something completely different, in which case the character's images won't be populated.
-- Anilist breaks down series a bit differently from Mudae. For example, Mudae lists Sinon as being from "Sword Art Online", but Anilist lists her as being from "Sword Art Online II", so her image lookup fails.
-- Sometimes Anilist spells characters differently from Mudae. For example, Anilist might have "Lelei la Lelena" instead of "Lelei la Lalena", "Kisara Tendo" instead of "Kisara Tendou", or "Asuna Yuuki" instead of "Asuna". This app tries to handle most of the differences, but it can't catch every case. If you see a case that you think would be easy to handle, feel free to submit an Issue **with** the algorithm to resolve the difference.
-- Finally, some series aren't on Anilist, especially when it comes to games, so images will not be returned for those.
+## ⚔️ How to Rank Your Characters
 
-## Important Notes
-- Make sure you don't save your exports with ANSI encoding, it's entirely possible they could have special characters that will get lost if you save with the wrong encoding, and that would cause bad things.
-- If you have your collection sorted before you go into this app and you're worried about something getting messed up, I recommend importing from $mmas and then immediately using the Export All Characters button to get your save dump followed by the Generate Sort Commands button to get your sort commands.
-- Stopping ranking midway triggers the most complicated state of this app. If any bugs are going to show up, this is where I expect them to show. If you like to read (there will be no tl;dr), here's an attempted explanation of what's going on behind the scenes and what you can expect:
-  - You can think of your characters as being split up into two different lists, the ranked characters and the unranked characters.
-  - Ranked characters ones that you specifically made a decision on by clicking on them in the ranking popup, whereas unranked are all the rest
-  - When you stop ranking, all of the ranked characters are going to be placed at the front of the list
-  - Since you'll be back in "edit mode", you'll be able to drag characters around, mark them as skip, and delete them. I'll refer to these three operations as re-sorting the character.
-  - If you re-sort unranked characters and all of your re-sorts are purely outside of the ranked characters, everything is fairly safe.
-  - If you re-sort unranked characters into the middle of ranked characters, re-sort ranked characters within themselves, or re-sort ranked characters out into the unranked characters, this is where it gets complicated.
-  - At any given time as you rank characters, there is one particular character that the app is trying to get you to rank. If you made at least one decision on that character, they become the special "in-progress" character.
-  - If you drag and drop the in-progress character within the ranked characters, the app will accept your decision as deliberate and will move on to the next character once you resume ranking.
-  - If you move an unranked character into the ranked characters, it will become a ranked character, the app will accept your decision as deliberate and will either continue with the in-progress character or will grab the next character for ranking once you resume ranking.
-  - If you move a ranked character into the unranked characters, it will become an unranked character and you will be shown that character again later on.
+Mudae Ranker offers two distinct ways to organize your collection.
+
+**1. Pre-Rank (Finite)**
+Use this mode first! It uses a traditional insertion-sort algorithm. You will be shown a character and asked to compare them against your already-sorted roster until they find their perfect spot. Once the queue is empty, your entire collection is mathematically sorted.
+
+**2. Endless Rank (∞)**
+Once your collection is generally sorted, use this mode. Endless Rank continuously pits randomly selected characters against each other, adjusting their hidden Elo rating behind the scenes. This is perfect for fine-tuning your top 100 or simply passing the time.
+
+## ☁️ Cloud Synchronization
+
+You no longer have to rely solely on text file exports to move between your PC and your phone.
+
+Click **Sign in with GitHub** to authorize the application. Mudae Ranker will automatically create a private, hidden Gist on your GitHub profile. Whenever you make changes, the app silently pushes your updated collection to the cloud. When you open the app on another device, it will detect your cloud save and automatically download your latest layout.
+
+## 📦 Managing Your Collection
+
+Clicking on any character thumbnail opens their full card, allowing you to edit their Mudae note, update their image URL, or flag them to be "Skipped" (which throws them to the bottom of your sort and ignores them during ranking).
+
+Use the **Mass Actions** dropdown to apply changes to multiple flagged characters at once:
+
+* **Batch Insert:** Send a group of newly claimed characters to a specific position in your list.
+* **Mass Skip / Un-Skip:** Quickly mark trade-fodder characters to be ignored.
+* **Mass Link After:** Group specific characters together so they always sort consecutively.
+* **Edit Local Notes:** Apply a specific `$note` string to multiple characters simultaneously.
+
+## 📤 Exporting Back to Discord
+
+When your layout is perfect, open the **Exports** dropdown to generate your Discord commands.
+
+* **Export Sort ($smp):** Generates the paginated `$smp` commands. Paste these into Discord to apply your new sort order.
+* **Export Notes ($note):** Generates the commands required to update your character notes in Discord.
+* **Export JSON:** Generates a complete data backup file of your entire collection state for safe keeping.
+
+---
+
+## 🔍 Fallback Image Lookups (AniList)
+
+If Mudae fails to provide an image URL for a character, the app will attempt to automatically look them up via the [AniList API](https://anilist.co/).
+
+* AniList limits requests to about 75 per minute, which may slightly delay the appearance of missing images.
+* AniList sometimes categorizes series or spells character names slightly differently than Mudae (e.g., "Sword Art Online II" vs "Sword Art Online"). If the names do not match, the image fallback will fail.
+
+## 📜 Credits & History
+
+This project has evolved across multiple iterations:
+
+* **Original Concept & Base Code:** [jonmervine / DarkMage530](https://github.com/jonmervine/mudae-ranker)
+* **Intermediate Updates:** [LieutenantCrunch](https://github.com/LieutenantCrunch/mudae-ranker)
+* **Current Version:** [Tech-TTGames](https://github.com/Tech-TTGames/mudae-ranker) — Expanded and modernized with serverless cloud-syncing, Elo-based endless ranking, mass state management, and modern UI/UX workflows.
