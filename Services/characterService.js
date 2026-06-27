@@ -1271,7 +1271,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 					public: false, // Keeps it hidden from their public GitHub profile
 					files: {
 						[filename]: {
-							content: JSON.stringify(service.characters || [])
+							content: angular.toJson(service.characters || [])
 						}
 					}
 				}
@@ -1313,7 +1313,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			data: {
 				files: {
 					"mudae_ranker_sync.json": {
-						content: JSON.stringify(characterData || [])
+						content: angular.toJson(characterData || [])
 					}
 				}
 			}
@@ -1324,7 +1324,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const series = seriesArray.pop();
 		if (!series) return;
 
-		const queryBody = JSON.stringify({
+		const queryBody = angular.toJson({
 			query: service.characterQuery,
 			variables: {seriesName: series.name, pageNumber: series.page}
 		});

@@ -55,7 +55,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 				characters: Characters.getCharacters(),
 				tierConfig: $scope.tierConfig
 			};
-			const currentStateString = JSON.stringify(syncPayload);
+			const currentStateString = angular.toJson(syncPayload);
 
 			// OPTIMIZATION: Skip the PATCH request if the data hasn't mutated
 			if (lastSyncedCloudState === currentStateString) {
@@ -373,7 +373,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 										$scope.saveTierConfig();
 									}
 
-									lastSyncedCloudState = JSON.stringify(cloudData);
+									lastSyncedCloudState = angular.toJson(cloudData);
 									saveToLocalStorage();
 								}
 								Utilities.showSuccess("Connected! Loaded your save layout from the cloud.", true);
@@ -392,7 +392,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 										$scope.saveTierConfig();
 									}
 
-									lastSyncedCloudState = JSON.stringify(cloudData);
+									lastSyncedCloudState = angular.toJson(cloudData);
 									saveToLocalStorage();
 								}
 								Utilities.showSuccess("Connected! Synced your data down from the cloud.", true);
@@ -400,7 +400,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 								const syncPayload = { characters: localData, tierConfig: $scope.tierConfig };
 								return Characters.saveToGist(token, gistInfo.id, syncPayload).then(() => {
 									Utilities.showSuccess("Connected! Cloud save updated with your current local layout.", true);
-									lastSyncedCloudState = JSON.stringify(syncPayload);
+									lastSyncedCloudState = angular.toJson(syncPayload);
 								});
 							}
 						});
@@ -427,11 +427,11 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Characters.loadFromGist(cloudToken, activeGistId).then(cloudData => {
 				if (cloudData) {
 					// Build the current local state string matching the new payload structure
-					const currentLocalState = JSON.stringify({
+					const currentLocalState = angular.toJson({
 						characters: Characters.getCharacters(),
 						tierConfig: $scope.tierConfig
 					});
-					const incomingCloudState = JSON.stringify(cloudData);
+					const incomingCloudState = angular.toJson(cloudData);
 
 					if (currentLocalState !== incomingCloudState) {
 						const incomingChars = cloudData.characters ? cloudData.characters : (Array.isArray(cloudData) ? cloudData : []);
