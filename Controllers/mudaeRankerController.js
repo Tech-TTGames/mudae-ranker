@@ -152,8 +152,6 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			}
 		}
 	}
-	// Execute immediately on controller load
-	loadLocalCacheSynchronously();
 
 	$scope.getFlaggedCharacters = function() {
 		return $scope.characters.filter(function(c) { return c.flag && !c.skip; });
@@ -462,5 +460,6 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 	};
 
 	// Trigger on boot
+	loadLocalCacheSynchronously();
 	$scope.initCloudSync();
 }]);
