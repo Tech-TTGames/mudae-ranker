@@ -1204,9 +1204,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			url: `https://api.github.com/gists/${gistId}?t=${cacheBuster}`,
 			headers: {
 				'Authorization': `Bearer ${token}`,
-				'Cache-Control': 'no-cache, no-store, must-revalidate',
-				'Pragma': 'no-cache',
-				'Expires': '0'
 			}
 		}).then(response => {
 			const filename = "mudae_ranker_sync.json";
