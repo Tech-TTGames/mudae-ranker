@@ -1196,10 +1196,18 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 	// Explicitly downloads data from a confirmed tracking Gist slot
 	service.loadFromGist = (token, gistId) => {
+		// Generate a unique timestamp to bypass the cache
+		const cacheBuster = new Date().getTime();
+
 		return $http({
 			method: 'GET',
-			url: `https://api.github.com/gists/${gistId}`,
-			headers: { 'Authorization': `Bearer ${token}` }
+			url: `https://api.github.com/gists/${gistId}?t=${cacheBuster}`,
+			headers: {
+				'Authorization': `Bearer ${token}`,
+				'Cache-Control': 'no-cache, no-store, must-revalidate',
+				'Pragma': 'no-cache',
+				'Expires': '0'
+			}
 		}).then(response => {
 			const filename = "mudae_ranker_sync.json";
 			if (response.data && response.data.files && response.data.files[filename]) {
