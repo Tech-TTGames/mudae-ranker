@@ -526,14 +526,42 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			return;
 		}
 
-		const leftIndex = Math.floor(Math.random() * validChars.length);
+		// 1. Initialize trackers for any new arrivals
+		validChars.forEach(c => {
+			if (typeof c.endlessMatches === 'undefined') c.endlessMatches = 0;
+		});
+
+		// 2. Sort the roster to prioritize characters with the fewest endless matches
+		validChars.sort((a, b) => a.endlessMatches - b.endlessMatches);
+
+		// 3. Pick the Left Character from a rotating pool of the bottom 15% least-played characters.
+		// This guarantees even distribution while keeping the exact character slightly unpredictable.
+		const poolSizeLeft = Math.max(2, Math.min(15, Math.floor(validChars.length * 0.15)));
+		const leftIndex = Math.floor(Math.random() * poolSizeLeft);
 		service.leftCompare = validChars[leftIndex];
 
+		// 4. Find the Right Character (Opponent)
 		const candidates = validChars.filter(c => c !== service.leftCompare);
-		candidates.sort((a, b) => Math.abs(a.elo - service.leftCompare.elo) - Math.abs(b.elo - service.leftCompare.elo));
 
-		const poolSize = Math.min(15, candidates.length);
-		const rightIndex = Math.floor(Math.random() * poolSize);
+		candidates.sort((a, b) => {
+			// Calculate standard Elo distance
+			const eloDiffA = Math.abs(a.elo - service.leftCompare.elo);
+			const eloDiffB = Math.abs(b.elo - service.leftCompare.elo);
+
+			// MASSIVE penalty for having played matches.
+			// 500 points means a character with 1 match will almost NEVER be picked
+			// over a character with 0 matches, regardless of how close their Elos are.
+			const weightA = eloDiffA + (a.endlessMatches * 500);
+			const weightB = eloDiffB + (b.endlessMatches * 500);
+
+			return weightA - weightB;
+		});
+
+		// Widen the pool from 15 to 30!
+		// This means it will randomly grab one of the top 30 candidates,
+		// introducing much more variety even if they aren't a perfect Elo match.
+		const rightPoolSize = Math.min(30, candidates.length);
+		const rightIndex = Math.floor(Math.random() * rightPoolSize);
 		service.rightCompare = candidates[rightIndex];
 	};
 
@@ -546,6 +574,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		service.leftCompare.elo = matchResult.newRatingA;
 		service.rightCompare.elo = matchResult.newRatingB;
+
+		// 5. Log the match so these characters are pushed to the back of the queue
+		service.leftCompare.endlessMatches = (service.leftCompare.endlessMatches || 0) + 1;
+		service.rightCompare.endlessMatches = (service.rightCompare.endlessMatches || 0) + 1;
 
 		$rootScope.$broadcast('charactersUpdated');
 		service.nextEndlessMatch();
