@@ -72,10 +72,12 @@ If Mudae fails to provide an image URL for a character, the app will attempt to 
 * AniList limits requests to about 75 per minute, which may slightly delay the appearance of missing images.
 * AniList sometimes categorizes series or spells character names slightly differently than Mudae (e.g., "Sword Art Online II" vs "Sword Art Online"). If the names do not match, the image fallback will fail.
 
-## 📜 Credits & History
+## 📜 Credits, History & Notes
 
 This project has evolved across multiple iterations:
 
 * **Original Concept & Base Code:** [jonmervine / DarkMage530](https://github.com/jonmervine/mudae-ranker)
 * **Intermediate Updates:** [LieutenantCrunch](https://github.com/LieutenantCrunch/mudae-ranker)
 * **Current Version:** [Tech-TTGames](https://github.com/Tech-TTGames/mudae-ranker) — Expanded and modernized with serverless cloud-syncing, Elo-based endless ranking, mass state management, and modern UI/UX workflows.
+
+*Note: Code files are covered by the MIT terms above. The project's branding and graphical design assets are located in the .\Assets directory and are governed by the separate LICENSE file contained within said directory.*

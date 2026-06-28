@@ -1,6 +1,7 @@
 MIT License
 
 Copyright (c) 2019 LieutenantCrunch
+Copyright (c) 2026-present Tech-TTGames
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +20,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+Note: Code files are covered by the MIT terms above. The project's branding and
+graphical design assets are located in the .\assets directory and are governed
+by the separate LICENSE file contained within said directory.

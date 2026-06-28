@@ -1,0 +1,19 @@
+Tech-TTGames\Mudae-Ranker Proprietary Branding License v1.0
+
+Introduction:
+The Tech-TTGames\Mudae-Ranker software source code is licensed under the MIT License. This specific license pertains solely to the branding resources included in the project, which are located in the .\Assets directory (including images, icons, logos, and graphical elements).
+
+Exclusion from the MIT License:
+All files in the .\Assets directory are explicitly excluded from the MIT License and are considered proprietary to the Tech-TTGames\Mudae-Ranker project. The terms of the MIT License do not apply to these files. They may not be modified, distributed, or used in any way without explicit, prior written authorization.
+
+Ownership and Copyright:
+The project retains all ownership, trademarks, and copyright of the branding resources in the .\Assets directory, including any derivative works. Unauthorized use, reproduction, or distribution is strictly prohibited.
+
+Requesting Permission:
+If you wish to use these branding resources, please open a GitHub issue on our repository describing your proposed use case. Permission may be granted or denied at the project's sole discretion.
+
+Limitations:
+This license applies solely to the files in the .\Assets directory and its subdirectories. It does not restrict your rights to use, modify, or distribute the software source code under the terms of the MIT License.
+
+Disclaimer of Warranty & Liability:
+The branding resources are provided "as is" without warranty of any kind. In no event shall the copyright holders be liable for any damages arising out of the use or inability to use these resources.
