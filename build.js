@@ -59,6 +59,20 @@ async function main() {
         }
     }
 
+    // --- NEW: Copy ALL files from the Assets folder to the dist root ---
+    const assetsDir = path.join(__dirname, 'Assets');
+    if (fs.existsSync(assetsDir)) {
+        const assets = fs.readdirSync(assetsDir);
+        for (const asset of assets) {
+            const srcPath = path.join(assetsDir, asset);
+            const destPath = path.join(distDir, asset);
+
+            if (fs.statSync(srcPath).isFile()) {
+                fs.copyFileSync(srcPath, destPath);
+            }
+        }
+    }
+
     // Process and compress the main entry markup file
     const htmlPath = path.join(__dirname, 'index.html');
     if (fs.existsSync(htmlPath)) {
