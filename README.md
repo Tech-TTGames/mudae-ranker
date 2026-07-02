@@ -74,6 +74,8 @@ If Mudae fails to provide an image URL for a character, the app will attempt to 
 
 ## 📜 Credits, History & Notes
 
+Project icon created by and used with permission from [@cybernoguchi](https://x.com/cybernoguchi).
+
 This project has evolved across multiple iterations:
 
 * **Original Concept & Base Code:** [jonmervine / DarkMage530](https://github.com/jonmervine/mudae-ranker)
