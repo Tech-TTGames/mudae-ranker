@@ -30,10 +30,13 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		active: false,
 		queue: [],
 		target: null,
-		minElo: EloEngine.MIN_ELO,
-		maxElo: EloEngine.MAX_ELO,
+		minIdx: 0,
+		maxIdx: 0,
+		phase: 'BINARY',
 		history: new Set()
 	};
+
+	service.getPlacementState = () => placementState;
 
 	// --- SortableJS Controls ---
 	service.getSortableObject = () => {
@@ -429,87 +432,136 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			return false;
 		}
 
-		let highestElo = EloEngine.MAX_ELO;
-		let lowestElo = EloEngine.MIN_ELO;
-
-		const activeRoster = service.characters.filter(c => !c.skip);
-		if (activeRoster.length > 0) {
-			highestElo = Math.max(...activeRoster.map(c => c.elo || 1200));
-			lowestElo = Math.min(...activeRoster.map(c => c.elo || 1200));
-		}
-
 		placementState.target = placementState.queue.shift();
-		placementState.target.placementMatchesLeft = 7;
+		placementState.target.placementMatchesLeft = 3;
 
-		placementState.minElo = lowestElo;
-		placementState.maxElo = highestElo;
+		const activeRoster = service.characters
+			.filter(c => !c.skip && c !== placementState.target && !placementState.queue.includes(c))
+			.sort((a, b) => b.elo - a.elo);
+
+		placementState.phase = 'BINARY';
+		placementState.minIdx = 0;
+		placementState.maxIdx = Math.max(0, activeRoster.length - 1);
 		placementState.history.clear();
 
 		return service.nextPlacementMatch();
 	};
 
 	service.nextPlacementMatch = () => {
-		if (placementState.target.placementMatchesLeft <= 0) {
-			return service.nextPlacementTarget();
-		}
-
-		const midElo = (placementState.minElo + placementState.maxElo) / 2;
-
-		// FIX: Exclude the rest of the pending queue and any uncalibrated heroes from opponent pools
-		const absoluteCandidates = service.characters.filter(c =>
-			c !== placementState.target &&
+		const activeRoster = service.characters.filter(c =>
 			!c.skip &&
-			c.placementMatchesLeft <= 0 &&
+			c !== placementState.target &&
 			!placementState.queue.includes(c)
-		);
+		).sort((a, b) => b.elo - a.elo);
 
-		if (absoluteCandidates.length === 0) {
-			Utilities.showWarning(`No valid opponents available to rank ${placementState.target.name} against. Placement bypassed.`, true);
-			placementState.target.placementMatchesLeft = 0;
-			return service.nextPlacementTarget();
+		// --- PHASE 1: BINARY SEARCH ---
+		if (placementState.phase === 'BINARY') {
+			if (placementState.minIdx > placementState.maxIdx) {
+				// Binary Search Complete! Calculate the exact baseline Elo.
+				const insertIdx = placementState.minIdx;
+				const prevChar = insertIdx > 0 ? activeRoster[insertIdx - 1] : null;
+				const nextChar = insertIdx < activeRoster.length ? activeRoster[insertIdx] : null;
+
+				if (prevChar && nextChar) {
+					placementState.target.elo = (prevChar.elo + nextChar.elo) / 2;
+				} else if (prevChar) {
+					placementState.target.elo = prevChar.elo - 10; // Absolute bottom
+				} else if (nextChar) {
+					placementState.target.elo = nextChar.elo + 10; // Absolute top
+				} else {
+					placementState.target.elo = EloEngine.DEFAULT_ELO;
+				}
+
+				// Transition to Phase 2
+				placementState.phase = 'POOLING';
+				service.sortArrayByElo();
+				return service.nextPlacementMatch();
+			}
+
+			// Pick the character exactly in the middle of our current index bounds
+			const midIdx = Math.floor((placementState.minIdx + placementState.maxIdx) / 2);
+			service.leftCompare = placementState.target;
+			service.rightCompare = activeRoster[midIdx];
+			return true;
 		}
 
-		let candidates = absoluteCandidates.filter(c => !placementState.history.has(c.originalName));
-		if (candidates.length === 0) {
-			placementState.history.clear();
-			candidates = absoluteCandidates;
+		// --- PHASE 2: ELO POOLING ---
+		if (placementState.phase === 'POOLING') {
+			if (placementState.target.placementMatchesLeft <= 0) {
+				return service.nextPlacementTarget();
+			}
+
+			// Only pool against characters that have finished their own placement
+			const poolCandidates = activeRoster.filter(c => c.placementMatchesLeft <= 0);
+
+			if (poolCandidates.length === 0) {
+				placementState.target.placementMatchesLeft = 0;
+				return service.nextPlacementTarget();
+			}
+
+			let candidates = poolCandidates.filter(c => !placementState.history.has(c.originalName));
+			if (candidates.length === 0) {
+				placementState.history.clear();
+				candidates = poolCandidates;
+			}
+
+			// Find opponents with the closest Elo to our newly calibrated target
+			candidates.sort((a, b) => Math.abs(a.elo - placementState.target.elo) - Math.abs(b.elo - placementState.target.elo));
+
+			service.leftCompare = placementState.target;
+
+			// Grab one of the top 3 closest Elos randomly so they don't face the exact same person repeatedly
+			const poolSize = Math.min(3, candidates.length);
+			service.rightCompare = candidates[Math.floor(Math.random() * poolSize)];
+
+			return true;
 		}
-
-		candidates.sort((a, b) => Math.abs(a.elo - midElo) - Math.abs(b.elo - midElo));
-
-		service.leftCompare = placementState.target;
-		service.rightCompare = candidates[0];
-
-		return true;
 	};
 
 	service.handlePlacementDecision = (leftWon) => {
-		const midElo = (placementState.minElo + placementState.maxElo) / 2;
+		// --- PHASE 1: BINARY SEARCH ---
+		if (placementState.phase === 'BINARY') {
+			const midIdx = Math.floor((placementState.minIdx + placementState.maxIdx) / 2);
 
-		if (leftWon) {
-			placementState.minElo = midElo;
-		} else {
-			placementState.maxElo = midElo;
+			// Note: Array index 0 is the HIGHEST Elo.
+			// If left (the target) wins, they belong higher up the list (lower index).
+			if (leftWon) {
+				placementState.maxIdx = midIdx - 1;
+			} else {
+				placementState.minIdx = midIdx + 1;
+			}
+
+			return service.nextPlacementMatch();
 		}
 
-		placementState.history.add(service.rightCompare.originalName);
+		// --- PHASE 2: ELO POOLING ---
+		if (placementState.phase === 'POOLING') {
+			placementState.history.add(service.rightCompare.originalName);
 
-		const K_PLACEMENT_AGGRESSIVE = 120;
-		const matchResult = EloEngine.calculateMatch(
-			service.leftCompare.elo,
-			service.rightCompare.elo,
-			leftWon ? 1 : 0,
-			K_PLACEMENT_AGGRESSIVE,
-			EloEngine.K_NORMAL
-		);
+			const rightMatches = typeof service.rightCompare.totalMatches === 'number'
+				? service.rightCompare.totalMatches
+				: 50;
 
-		service.leftCompare.elo = matchResult.newRatingA;
-		service.rightCompare.elo = matchResult.newRatingB;
+			const matchResult = EloEngine.calculateMatch(
+				service.leftCompare.elo,
+				service.rightCompare.elo,
+				leftWon ? 1 : 0,
+				service.leftCompare.totalMatches || 0,
+				rightMatches
+			);
 
-		service.sortArrayByElo();
-		placementState.target.placementMatchesLeft--;
-		$rootScope.$broadcast('charactersUpdated');
-		return service.nextPlacementMatch();
+			service.leftCompare.elo = matchResult.newRatingA;
+			service.rightCompare.elo = matchResult.newRatingB;
+
+			service.leftCompare.totalMatches = (service.leftCompare.totalMatches || 0) + 1;
+			service.rightCompare.totalMatches = rightMatches + 1;
+
+			service.sortArrayByElo();
+			placementState.target.placementMatchesLeft--;
+			$rootScope.$broadcast('charactersUpdated');
+
+			return service.nextPlacementMatch();
+		}
 	};
 
 	// --- Endless Rank Engine ---
@@ -582,13 +634,14 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const matchResult = EloEngine.calculateMatch(
 			service.leftCompare.elo,
 			service.rightCompare.elo,
-			leftWon ? 1 : 0
+			leftWon ? 1 : 0,
+			service.leftCompare.endlessMatches || 0,
+			service.rightCompare.endlessMatches || 0
 		);
 
 		service.leftCompare.elo = matchResult.newRatingA;
 		service.rightCompare.elo = matchResult.newRatingB;
 
-		// 5. Log the match so these characters are pushed to the back of the queue
 		service.leftCompare.endlessMatches = (service.leftCompare.endlessMatches || 0) + 1;
 		service.rightCompare.endlessMatches = (service.rightCompare.endlessMatches || 0) + 1;
 
@@ -689,9 +742,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		else if (service.mode === Mode.Placement) {
 			state.placementState = {
 				active: placementState.active,
-				minElo: placementState.minElo,
-				maxElo: placementState.maxElo,
-				history: Array.from(placementState.history), // Safe serialization array conversion
+				minIdx: placementState.minIdx,
+				maxIdx: placementState.maxIdx,
+				phase: placementState.phase,
+				history: Array.from(placementState.history),
 				queue: angular.copy(placementState.queue),
 				target: angular.copy(placementState.target)
 			};
@@ -724,16 +778,20 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		// FIX: Fully restore limits and hydrate the ES6 history Set cleanly
 		else if (service.mode === Mode.Placement) {
 			placementState.active = prevState.placementState.active;
-			placementState.minElo = prevState.placementState.minElo;
-			placementState.maxElo = prevState.placementState.maxElo;
-
-			// Reconstitute the Set from the flat array snapshot
+			placementState.minIdx = prevState.placementState.minIdx;
+			placementState.maxIdx = prevState.placementState.maxIdx;
+			placementState.phase = prevState.placementState.phase;
 			placementState.history = new Set(prevState.placementState.history);
 
-			// Re-bind objects back to live grid element references
-			placementState.queue = prevState.placementState.queue.map(c => service.characters.find(g => g.originalName === c.originalName));
+			placementState.queue = prevState.placementState.queue.map(c =>
+				service.characters.find(g => g.originalName === c.originalName)
+			);
+
 			if (prevState.placementState.target) {
 				placementState.target = service.characters.find(g => g.originalName === prevState.placementState.target.originalName);
+				if (placementState.target) {
+					placementState.target.placementMatchesLeft = prevState.placementState.target.placementMatchesLeft;
+				}
 			}
 		}
 

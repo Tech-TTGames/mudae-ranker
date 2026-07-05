@@ -12,8 +12,16 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		if (Characters.mode === Characters.Modes.Endless) {
 			return "∞ Endless Mode";
 		} else if (Characters.mode === Characters.Modes.Placement) {
-			const target = Characters.getLeftCompare();
-			return "Placement Matches Left: " + (target ? target.placementMatchesLeft : 0);
+			const pState = Characters.getPlacementState();
+			// Handle the new Two-Phase architecture
+			if (pState && pState.phase === 'BINARY') {
+				// Calculate how many characters are left in the narrowing search bounds
+				const bounds = Math.max(0, (pState.maxIdx - pState.minIdx) + 1);
+				return `Phase 1: Binary Search (Window: ${bounds})`;
+			} else {
+				const target = Characters.getLeftCompare();
+				return `Phase 2: Fine-Tuning (${target ? target.placementMatchesLeft : 0} left)`;
+			}
 		} else {
 			// Finite Mode Fallback
 			return PreferenceList.currentIndex + " / " + PreferenceList.size;

@@ -3,35 +3,41 @@ mudaeRanker.factory('EloEngine', function() {
     const MIN_ELO = 800;
     const DEFAULT_ELO = 1200;
 
-    // Standard K-Factors
-    const K_NORMAL = 16;
-    const K_PROVISIONAL = 60; // For placement matches/new inserts
+    // Private Flex-K Calculator (Not exposed in the return block)
+    const getFlexK = (matchesPlayed) => {
+        // Explicitly reject NaN, null, strings, etc.
+        if (typeof matchesPlayed !== 'number' || !Number.isFinite(matchesPlayed)) return 16;
+        if (matchesPlayed <= 5) return 120; // Aggressive Placement
+        if (matchesPlayed <= 15) return 60; // Provisional Settling
+        if (matchesPlayed <= 30) return 32; // Maturing
+        return 16;                          // Established
+    };
 
-    // Calculates the expected win probability of Character A vs. Character B
     const calculateExpected = (ratingA, ratingB) => {
         return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
     };
 
     return {
-        // Expose constants for the rest of the app to use
-        K_NORMAL,
-        K_PROVISIONAL,
         DEFAULT_ELO,
         MIN_ELO,
         MAX_ELO,
 
         /**
-         * Calculates the new ratings after a match.
+         * Calculates the new ratings after a match using internal Flex-K.
          * @param {number} ratingA - Current Elo of Character A
          * @param {number} ratingB - Current Elo of Character B
-         * @param {number} scoreA - 1 if A wins, 0 if A loses (0.5 for draw, though we won't use draws)
-         * @param {number} kFactorA - Volatility for A
-         * @param {number} kFactorB - Volatility for B
+         * @param {number} scoreA - 1 if A wins, 0 if A loses
+         * @param {number} matchesPlayedA - Number of matches A has played (for K-Factor)
+         * @param {number} matchesPlayedB - Number of matches B has played (for K-Factor)
          * @returns {Object} { newRatingA, newRatingB }
          */
-        calculateMatch: (ratingA, ratingB, scoreA, kFactorA = K_NORMAL, kFactorB = K_NORMAL) => {
+        calculateMatch: (ratingA, ratingB, scoreA, matchesPlayedA, matchesPlayedB) => {
             const expectedA = calculateExpected(ratingA, ratingB);
             const expectedB = 1 - expectedA;
+
+            // Compute volatility internally
+            const kFactorA = getFlexK(matchesPlayedA);
+            const kFactorB = getFlexK(matchesPlayedB);
 
             let newRatingA = ratingA + kFactorA * (scoreA - expectedA);
             let newRatingB = ratingB + kFactorB * ((1 - scoreA) - expectedB);
@@ -54,7 +60,6 @@ mudaeRanker.factory('EloEngine', function() {
         seedInitialElo: (index, totalCharacters) => {
             if (totalCharacters <= 1) return DEFAULT_ELO;
             const eloRange = MAX_ELO - MIN_ELO;
-            // Linearly interpolate between 2400 and 800
             return MAX_ELO - ((index / (totalCharacters - 1)) * eloRange);
         }
     };
