@@ -56,7 +56,7 @@
 <body data-ng-app="mudaeRanker" data-ng-controller="mudaeRankerController" data-ng-class="[getModeClassName(), {'GhostMode': ghostMode, 'ListMode': listMode}]" data-mudr-body>
 
 	<div class="IOContainer">
-		<textarea id="InputField" class="InputField" placeholder="Paste a previous export or results from ...i-s/i-as command here.&#10;Suggested commands: $mmi-s and then after importing order $mmai-s to add series data.&#10;NOTE: Re-importing a character will keep it's rankings and update any new data you provide so feel free to do so!" aria-label="Input field"></textarea>
+		<textarea id="InputField" class="InputField" placeholder="Paste a previous export or results from ...i-s/i-as command here.&#10;&#10;Suggested commands: $mmi-s and then after importing order $mmai-s to add series data.&#10;&#10;NOTE: Re-importing a character will keep rankings and refresh the entry with data you provide!" aria-label="Input field"></textarea>
 		<textarea id="OutputField" class="OutputField" placeholder="Exported results will show up here" aria-label="Output field"></textarea>
 	</div>
 
@@ -99,7 +99,7 @@
 		<span class="SelectionIndicator" data-ng-show="getFlaggedCharacters().length > 0">{{ getFlaggedCharacters().length }} Selected</span>
 
 		<div class="Dropdown">
-			<button class="CharacterActionBtn" data-ng-disabled="!hasCharacters()">📤 Exports ▾</button>
+			<button class="CharacterActionBtn" data-ng-disabled="!hasCharacters()">📤 Exports/Commands ▾</button>
 			<div class="Dropdown-content">
 				<button data-ng-click="exportSort()">🔀 Export Sort ($smp)</button>
 				<button data-ng-click="exportNoteCommand()">📝 Export Notes ($note)</button>
