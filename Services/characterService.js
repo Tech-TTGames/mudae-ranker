@@ -234,7 +234,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const total = service.characters.length;
 		for (let i = 0; i < total; i++) {
 			const matchCharacter = service.characters[i];
-			if (matchCharacter.minimizedName === character.minimizedName &&
+			if (matchCharacter.originalName === character.originalName &&
 			   (matchCharacter.series === character.series || matchCharacter.series === 'Unknown Series' || character.series === 'Unknown Series')) {
 
 				// 1. Upgrade Series if the new paste provides missing context
