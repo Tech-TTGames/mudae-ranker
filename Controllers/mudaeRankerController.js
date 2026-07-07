@@ -30,9 +30,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 
 	// --- Expose Endless Rank to UI ---
 	$scope.startEndlessRank = function() {
-		if (Characters.startEndlessRank()) {
-			document.getElementById('RankingContainer').style.display = 'block';
-		}
+		Characters.startEndlessRank()
 	};
 
 	// Undo, Ghost Mode, and List View hooks
@@ -81,6 +79,10 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		if (parsed.tierConfig) {
 			$scope.tierConfig = parsed.tierConfig;
 			$scope.saveTierConfig();
+		}
+
+		if (Characters.mode === Characters.Modes.RankFinite) {
+			Characters.resumeRankMode()
 		}
 	}
 
@@ -170,10 +172,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Utilities.showSuccess('Starting placement matches for ' + queue.length + ' character(s).', true);
 		}
 
-		const isInserting = Characters.startPlacementMatches(queue);
-		if (isInserting) {
-			document.getElementById('RankingContainer').style.display = 'block';
-		}
+		Characters.startPlacementMatches(queue);
 	};
 
 	// --- Merge / Absorb Logic ---

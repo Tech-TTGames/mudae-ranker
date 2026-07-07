@@ -411,7 +411,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		service.minimizeActiveCard(true);
 		service.mode = Mode.Placement;
-		service._initializeRankMode();
 
 		placementState.queue = queueToInsert;
 		placementState.active = true;
@@ -578,7 +577,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 
 		service.mode = Mode.Endless;
-		service._initializeRankMode();
 		service.nextEndlessMatch();
 		return true;
 	};
@@ -795,20 +793,13 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			}
 		}
 
-		if (service._rankingContainer) service._rankingContainer.style.display = 'block';
 		$rootScope.$broadcast('charactersUpdated');
 		return true;
 	};
 
 	// --- General UI, Parser, & Lifecycles ---
-	service._initializeRankMode = () => {
-		if (!service._rankingContainer) service._rankingContainer = $('#RankingContainer')[0];
-		service._rankingContainer.style.display = 'block';
-	};
-
 	service.setupRankMode = () => {
 		service.mode = Mode.RankFinite;
-		service._initializeRankMode();
 		service._rankedCharacters = [];
 		service._discardedCharacters = [];
 
@@ -847,7 +838,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	service.endRankMode = () => {
-		if (service._rankingContainer) service._rankingContainer.style.display = '';
 		const sortedIndices = PreferenceList.getOrder();
 		const rankedCharacters = sortedIndices.map(idx => service._rankedCharacters[idx]);
 		const newCharacters = service.resolveLinks(rankedCharacters, service._discardedCharacters);
@@ -857,8 +847,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	service.pauseRankMode = () => {
-		if (service._rankingContainer) service._rankingContainer.style.display = '';
-
 		if (service.mode === Mode.Placement) {
 			placementState.active = false;
 			service.characters.forEach(c => c.flag = false);
@@ -1161,6 +1149,11 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 					service.updateAll(jsonInput.characters ? jsonInput.characters : jsonInput);
 				}
 				service.sortArrayByElo();
+
+				if (service.mode === Mode.RankFinite) {
+					service.resumeRankMode();
+				}
+
 				Utilities.showSuccess('Done processing the input', true);
 				$rootScope.$broadcast('charactersUpdated');
 			} catch(e) {

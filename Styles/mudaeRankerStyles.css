@@ -197,6 +197,7 @@ button:disabled {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2) !important;
     box-sizing: border-box;
     width: 5%;
+    min-width: 100px;
     padding: 3px;
     display: flex;
     margin: 3px;
@@ -214,6 +215,9 @@ button:disabled {
     width: 100%;
     height: 100%;
     border-radius: 6px;
+    aspect-ratio: 225 / 350;
+    object-fit: cover;
+    object-position: center top;
 }
 
 .CharacterThumb .CharacterName,
@@ -463,11 +467,21 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
 .RankingBlocker {
     background-color: rgba(0, 0, 0, 0.6);
     backdrop-filter: blur(4px);
-    bottom: 0; display: none; left: 0; position: fixed; right: 0; top: 0; z-index: -1;
+    bottom: 0;
+    display: none;
+    left: 0;
+    position: fixed;
+    right: 0;
+    top: 0;
+    z-index: -1;
 }
 .RankMode .RankingBlocker {
     display: block;
     z-index: 10000 !important;
+}
+.RankMode .RankingContainer {
+    display: block;
+    z-index: 10001 !important;
 }
 .RankMode .CharacterClose { display: none; }
 
@@ -479,8 +493,10 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
     border-radius: 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     display: none;
-    padding: 10px;
+    padding: 15px;
     z-index: 10001 !important;
+    width: 100%;
+    max-width: 600px;
 }
 
 /* --- Ranking Modal Header (Flexbox Upgrade) --- */
@@ -546,10 +562,25 @@ body:not(.ListMode) .CharacterCardContainer .CharacterThumb:not(.CharacterFull) 
     display: flex;
     gap: 20px;
     justify-content: center;
+    align-items: stretch;
 }
 
-.RankingContainer .CharacterThumb.CharacterFull { max-width: 50%; cursor: pointer; }
-.RankingContainer .CharacterThumb.CharacterFull img { width: 225px; height: 350px; object-fit: cover; border-radius: 6px; }
+.RankingContainer .CharacterThumb.CharacterFull {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 225px;
+    max-width: 280px;
+    min-width: 150px;
+    cursor: pointer;
+}
+.RankingContainer .CharacterThumb.CharacterFull img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 225 / 350;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-top: auto;
+}
 .RankingContainer .CharacterThumb.CharacterFull .CharacterNote { margin-bottom: 8px; margin-top: 4px; display: inline-block; }
 
 #NewCharacterCard { display: none; min-width: 20%; }
