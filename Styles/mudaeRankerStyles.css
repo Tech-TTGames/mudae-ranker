@@ -178,7 +178,7 @@ button:disabled {
     /* When the mouse enters, show it INSTANTLY (0s delay) */
     transition: opacity 0.1s ease 0s,
                 transform 0.1s ease 0s,
-                visibility 0s linear 0s;
+                visibility 0s linear 0s,
                 pointer-events 0s linear 0s;
 }
 
