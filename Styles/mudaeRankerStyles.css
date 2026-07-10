@@ -133,17 +133,15 @@ button:disabled {
     border: 1px solid #4e5058;
     top: 100%;
     left: 0;
-    margin-top: 2px;
 
 	opacity: 0;
     visibility: hidden;
     pointer-events: none; /* Prevents ghost-clicks when invisible */
-    transform: translateY(-5px); /* Adds a subtle slide-down effect */
+    transform: translateY(5px); /* Adds a subtle slide-down effect */
 
-    /* When the mouse leaves, WAIT 1s before fading out */
-    transition: opacity 0.2s ease 1s,
-                transform 0.2s ease 1s,
-                visibility 0s linear 1.2s;
+    transition: opacity 0.2s ease 0.4s,
+                transform 0.2s ease 0.4s,
+                visibility 0s linear 0.6s;
 }
 
 .Dropdown-content button {
