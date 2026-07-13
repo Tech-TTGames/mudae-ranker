@@ -255,6 +255,11 @@ button:disabled {
     z-index: 9999 !important;
 }
 
+.CharacterThumb:not(.CharacterFull) .CharacterClose {
+    display: none !important;
+}
+
+
 .EditMode .CharacterThumb.CharacterFull {
     left: 50%;
     position: fixed;
