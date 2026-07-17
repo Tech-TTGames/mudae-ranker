@@ -839,9 +839,20 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 	service.endRankMode = () => {
 		const sortedIndices = PreferenceList.getOrder();
-		const rankedCharacters = sortedIndices.map(idx => service._rankedCharacters[idx]);
+		const totalRanked = sortedIndices.length;
+
+		// 1. Rebuild the ranked array based on the manual sort order
+		const rankedCharacters = sortedIndices.map((originalIndex, newRank) => {
+			const char = service._rankedCharacters[originalIndex];
+			char.elo = EloEngine.seedInitialElo(newRank, totalRanked);
+
+			return char;
+		});
+
+		// 2. Weave the skipped characters back in
 		const newCharacters = service.resolveLinks(rankedCharacters, service._discardedCharacters);
 
+		// 3. Shutdown the UI and trigger the save
 		service.mode = Mode.Edit;
 		service.updateAll(newCharacters);
 	};
@@ -868,6 +879,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 
 		service.mode = Mode.Edit;
+		service.reapplyLinks();
 		service.sortArrayByElo();
 		$rootScope.$broadcast('charactersUpdated');
 	};
