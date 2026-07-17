@@ -10,6 +10,9 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service.activeIndex = -1;
 	service.inMessageBox = false;
 	service.sortableObject = null;
+	service._matchStartTime = 0;
+	service._accumulatedTime = 0;
+	service._lastTick = 0;
 
 	// Mode definitions and helper predicates
 	const Mode = { Edit: 0, RankFinite: 1, Placement: 2, Endless: 3 };
@@ -24,6 +27,39 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		get: () => service.getRankingInProgress(),
 		configurable: true
 	});
+
+	document.addEventListener("visibilitychange", () => {
+		if (service._matchStartTime === 0) return;
+
+		if (document.hidden) {
+			// Tab minimized/switched: Save the time spent so far
+			service._accumulatedTime += (Date.now() - service._lastTick);
+		} else {
+			// Tab active again: Restart the clock from this exact moment
+			service._lastTick = Date.now();
+		}
+	});
+
+	service._markMatchStart = () => {
+		service._matchStartTime = Date.now();
+		service._accumulatedTime = 0;
+		service._lastTick = Date.now();
+	};
+
+	service._getLatencyMultiplier = () => {
+		if (service._matchStartTime === 0) return 1.0;
+
+		let totalTimeMs = service._accumulatedTime;
+		if (!document.hidden) {
+			totalTimeMs += (Date.now() - service._lastTick);
+		}
+
+		const t = totalTimeMs / 1000;
+
+		// If t > 120 (AFK), return 1.0.
+		// Otherwise, calculate the slope and clamp the result strictly between 0.3 and 1.0
+		return t > 120 ? 1.0 : Math.max(0.3, Math.min(1.0, 1.0 - ((t - 3) * 0.7 / 12)));
+	};
 
 	// --- Placement Matches State ---
 	const placementState = {
@@ -512,6 +548,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			// Grab one of the top 3 closest Elos randomly so they don't face the exact same person repeatedly
 			const poolSize = Math.min(3, candidates.length);
 			service.rightCompare = candidates[Math.floor(Math.random() * poolSize)];
+			service._markMatchStart();
 
 			return true;
 		}
@@ -546,7 +583,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 				service.rightCompare.elo,
 				leftWon ? 1 : 0,
 				service.leftCompare.totalMatches || 0,
-				rightMatches
+				rightMatches,
+				service._getLatencyMultiplier()
 			);
 
 			service.leftCompare.elo = matchResult.newRatingA;
@@ -626,6 +664,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const rightPoolSize = Math.min(30, candidates.length);
 		const rightIndex = Math.floor(Math.random() * rightPoolSize);
 		service.rightCompare = candidates[rightIndex];
+		service._markMatchStart();
 	};
 
 	service.handleEndlessDecision = (leftWon) => {
@@ -634,7 +673,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			service.rightCompare.elo,
 			leftWon ? 1 : 0,
 			service.leftCompare.endlessMatches || 0,
-			service.rightCompare.endlessMatches || 0
+			service.rightCompare.endlessMatches || 0,
+			service._getLatencyMultiplier()
 		);
 
 		service.leftCompare.elo = matchResult.newRatingA;
@@ -794,6 +834,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 
 		$rootScope.$broadcast('charactersUpdated');
+		service._markMatchStart();
 		return true;
 	};
 

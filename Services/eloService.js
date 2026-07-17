@@ -29,9 +29,10 @@ mudaeRanker.factory('EloEngine', function() {
          * @param {number} scoreA - 1 if A wins, 0 if A loses
          * @param {number} matchesPlayedA - Number of matches A has played (for K-Factor)
          * @param {number} matchesPlayedB - Number of matches B has played (for K-Factor)
+         * @param {number} [multiplier=1] - Optional multiplier for the K-Factor (e.g. for MMR)
          * @returns {Object} { newRatingA, newRatingB }
          */
-        calculateMatch: (ratingA, ratingB, scoreA, matchesPlayedA, matchesPlayedB) => {
+        calculateMatch: (ratingA, ratingB, scoreA, matchesPlayedA, matchesPlayedB, multiplier = 1) => {
             const expectedA = calculateExpected(ratingA, ratingB);
             const expectedB = 1 - expectedA;
 
@@ -39,8 +40,8 @@ mudaeRanker.factory('EloEngine', function() {
             const kFactorA = getFlexK(matchesPlayedA);
             const kFactorB = getFlexK(matchesPlayedB);
 
-            let newRatingA = ratingA + kFactorA * (scoreA - expectedA);
-            let newRatingB = ratingB + kFactorB * ((1 - scoreA) - expectedB);
+            let newRatingA = ratingA + kFactorA * (scoreA - expectedA) * multiplier;
+            let newRatingB = ratingB + kFactorB * ((1 - scoreA) - expectedB) * multiplier;
 
             newRatingA = Math.max(MIN_ELO, Math.min(MAX_ELO, newRatingA));
             newRatingB = Math.max(MIN_ELO, Math.min(MAX_ELO, newRatingB));
