@@ -52,14 +52,29 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		if ($scope.listMode) $scope.ghostMode = false;
 	};
 
+	// --- Device Fingerprinting ---
+	function getDeviceId() {
+		let id = localStorage.getItem('mudr_device_id');
+		if (!id) {
+			id = 'device_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now();
+			localStorage.setItem('mudr_device_id', id);
+		}
+		return id;
+	}
+
 	function buildSavePayload() {
 		return {
 			appState: {
 				rankingInProgress: Characters.getRankingInProgress(),
+				activeMode: Characters.mode,
 				preferenceState: PreferenceList.getState()
 			},
 			characters: Characters.getCharacters(),
-			tierConfig: $scope.tierConfig
+			tierConfig: $scope.tierConfig,
+			metadata: {
+				timestamp: Date.now(),
+				deviceId: getDeviceId()
+			}
 		};
 	}
 
@@ -67,7 +82,11 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		const parsed = angular.fromJson(payload);
 
 		if (parsed.appState) {
-			if (parsed.appState.rankingInProgress) Characters.mode = Characters.Modes.RankFinite;
+			if (parsed.appState.activeMode !== undefined) {
+				Characters.mode = parsed.appState.activeMode;
+			} else if (parsed.appState.rankingInProgress) {
+				Characters.mode = Characters.Modes.RankFinite;
+			}
 			if (parsed.appState.preferenceState) PreferenceList.setState(parsed.appState.preferenceState);
 		}
 
@@ -82,7 +101,9 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		}
 
 		if (Characters.mode === Characters.Modes.RankFinite) {
-			Characters.resumeRankMode()
+			Characters.resumeRankMode();
+		} else if (Characters.mode === Characters.Modes.Endless) {
+			Characters.startEndlessRank();
 		}
 	}
 
@@ -450,17 +471,44 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 					const currentLocalState = angular.toJson(buildSavePayload());
 					const incomingCloudState = angular.toJson(cloudData);
 
-					if (currentLocalState !== incomingCloudState) {
-						loadSavePayload(cloudData);
-						lastSyncedCloudState = angular.toJson(buildSavePayload()); // Normalized!
-						saveToLocalStorage();
-						console.log("☁️ Application state successfully synced with latest GitHub cloud data.");
-					} else {
+					if (currentLocalState === incomingCloudState) {
 						lastSyncedCloudState = currentLocalState;
 						console.log("☁️ Cloud connection verified: Local data is already perfectly up-to-date.");
+						return;
+					}
+					const localCacheRaw = localStorage.getItem('mudaeRankerCache');
+					const localData = localCacheRaw ? angular.fromJson(localCacheRaw) : null;
+
+					const cloudMeta = cloudData.metadata || { timestamp: 0, deviceId: 'unknown' };
+					const localMeta = (localData && localData.metadata) ? localData.metadata : { timestamp: 0, deviceId: 'unknown' };
+
+					if (cloudMeta.deviceId === getDeviceId()) {
+						if (cloudMeta.timestamp > localMeta.timestamp) {
+							console.log("☁️ Found a newer save from THIS device. Hydrating...");
+							loadSavePayload(incomingCloudState);
+							lastSyncedCloudState = incomingCloudState;
+							saveToLocalStorage();
+						} else {
+							console.log("☁️ Local save is newer than Cloud save. Queuing push...");
+							lastSyncedCloudState = null; // Forces your app's sync timer to overwrite the cloud
+						}
+					} else {
+						if (cloudMeta.timestamp > localMeta.timestamp) {
+						const dateStr = new Date(cloudMeta.timestamp).toLocaleString();
+
+						// Abuse the built-in confirm modal to ask the user
+						if (window.confirm(`⚠️ CLOUD CONFLICT DETECTED ⚠️\n\nFound a newer save from another device (Saved: ${dateStr}).\n\nClick 'OK' to LOAD the cloud save (overwriting this device).\n\nClick 'Cancel' to KEEP your current screen (overwriting the cloud).`)) {
+							loadSavePayload(incomingCloudState);
+							lastSyncedCloudState = incomingCloudState;
+							saveToLocalStorage();
+							Utilities.showSuccess("☁️ Synced data from your other device.", true);
+						} else {
+							console.log("☁️ User rejected cloud save. Forcing cloud overwrite...");
+							lastSyncedCloudState = null; // Forces local to overwrite the cloud on next tick
+						}
 					}
 				}
-			}).catch(err => {
+			}}).catch(err => {
 				console.error("❌ Failed to download background cloud sync on boot:", err);
 			});
 		}
