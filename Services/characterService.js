@@ -91,6 +91,31 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		$rootScope.$broadcast('charactersUpdated');
 	};
 
+	/**
+	 * DESTRUCTIVE: Re-planes all Elo scores to perfectly even intervals
+	 * using the existing seedInitialElo logic.
+	 */
+	service.replaneElos = () => {
+		if (!service.characters || service.characters.length < 2) return;
+
+		// Sort by current Elo (highest to lowest) to establish the true rank order
+		const sortedCharacters = [...service.characters].sort((a, b) => b.elo - a.elo);
+		const total = sortedCharacters.length;
+
+		// Abuse the existing seeder
+		sortedCharacters.forEach((char, index) => {
+			char.elo = EloEngine.seedInitialElo(index, total);
+		});
+
+		console.log(`🧹 Successfully re-planed ${total} characters.`);
+
+		// Trigger UI update
+		$rootScope.$broadcast('charactersUpdated');
+	};
+
+	// Expose globally for easy console access
+	window.replaneElos = service.replaneElos;
+
 	// --- SortableJS Controls ---
 	service.getSortableObject = () => {
 		if (service.sortableObject != null) return service.sortableObject;
