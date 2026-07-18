@@ -74,6 +74,23 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 	service.getPlacementState = () => placementState;
 
+	service.autoRescale = () => {
+		if (!service.characters || service.characters.length < 2) return;
+
+		// 1. Extract a pure array of just the Elo numbers
+		const currentElos = service.characters.map(char => char.elo);
+
+		// 2. Hand the math off to the Elo Engine (no bounds passed!)
+		const scaledElos = EloEngine.rescalePool(currentElos);
+
+		// 3. Map the newly calculated numbers back onto your character objects
+		service.characters.forEach((char, index) => {
+			char.elo = scaledElos[index];
+		});
+
+		$rootScope.$broadcast('charactersUpdated');
+	};
+
 	// --- SortableJS Controls ---
 	service.getSortableObject = () => {
 		if (service.sortableObject != null) return service.sortableObject;

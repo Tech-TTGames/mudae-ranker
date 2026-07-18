@@ -95,6 +95,8 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			Characters.updateAll(chars);
 		}
 
+		Characters.autoresize();
+
 		if (parsed.tierConfig) {
 			$scope.tierConfig = parsed.tierConfig;
 			$scope.saveTierConfig();

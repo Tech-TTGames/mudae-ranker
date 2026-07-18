@@ -62,6 +62,27 @@ mudaeRanker.factory('EloEngine', function() {
             if (totalCharacters <= 1) return DEFAULT_ELO;
             const eloRange = MAX_ELO - MIN_ELO;
             return MAX_ELO - ((index / (totalCharacters - 1)) * eloRange);
-        }
+        },
+
+        /**
+         * Takes an array of raw Elo scores and scales them to fit within the engine's target bounds.
+         * @param {number[]} elos - Array of current Elo scores
+         * @returns {number[]} Array of scaled Elo scores in the exact same order
+         */
+        rescalePool: (elos) => {
+            if (!elos || elos.length < 2) return elos;
+
+            let currentMin = Math.min(...elos);
+            let currentMax = Math.max(...elos);
+
+            // Bail out if the roster is totally flat (prevents division by zero)
+            if (currentMin === currentMax) return elos;
+
+            return elos.map(elo => {
+                // Uses the engine's internal MIN_ELO and MAX_ELO constants
+                const scaledElo = ((elo - currentMin) / (currentMax - currentMin)) * (MAX_ELO - MIN_ELO) + MIN_ELO;
+                return Math.round(scaledElo);
+            });
+        },
     };
 });
