@@ -43,9 +43,6 @@ mudaeRanker.factory('EloEngine', function() {
             let newRatingA = ratingA + kFactorA * (scoreA - expectedA) * multiplier;
             let newRatingB = ratingB + kFactorB * ((1 - scoreA) - expectedB) * multiplier;
 
-            newRatingA = Math.max(MIN_ELO, Math.min(MAX_ELO, newRatingA));
-            newRatingB = Math.max(MIN_ELO, Math.min(MAX_ELO, newRatingB));
-
             return {
                 newRatingA: newRatingA,
                 newRatingB: newRatingB
