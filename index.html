@@ -126,7 +126,7 @@
 	</div>
 
 	<div class="CharacterCardContainer" data-ng-sortable="sortableConfig">
-		<div data-ng-repeat="c in characters | filter:searchQuery" data-ng-class="[c.className, {'CardSkipped': c.skip}]" data-ng-attr-title="{{ c.series + ': ' + c.name}}" data-mudr-card-click data-character-index="{{ $index }}">
+		<div data-ng-repeat="c in characters | filter:searchQuery" data-ng-class="[c.className, {'CardSkipped': c.skip}]" data-ng-attr-title="{{ c.series + ': ' + c.name}}" data-mudr-card-click data-character-index="{{ characters.indexOf(c) }}">
 			<div class="DragHandle" title="Drag to reorder">&#9776;</div>
 			<div class="CharacterName">
 				<span class="CharacterNameText">{{ c.originalName }}</span>
