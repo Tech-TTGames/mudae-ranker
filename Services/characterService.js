@@ -1,5 +1,4 @@
-/* global mudaeRanker */
-mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilities', 'EloEngine', 'PreferenceList', function($rootScope, $interval, $http, Utilities, EloEngine, PreferenceList) {
+mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilities', 'trueSkillService', function($rootScope, $interval, $http, Utilities, trueSkillService) {
 	const service = this;
 
 	service.characters = [];
@@ -13,6 +12,9 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service._matchStartTime = 0;
 	service._accumulatedTime = 0;
 	service._lastTick = 0;
+	service._recentMatchups = [];
+	service.lastRankMode = null;
+	const MAX_RECENT_MATCHUPS = 25;
 
 	// Mode definitions and helper predicates
 	const Mode = { Edit: 0, RankFinite: 1, Placement: 2, Endless: 3 };
@@ -21,7 +23,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 	service.isPlacementMode = () => service.mode === Mode.Placement;
 	service.isEndlessMode = () => service.mode === Mode.Endless;
-	service.getRankingInProgress = () => service.mode !== Mode.Edit; // Single unified declaration
+	service.getRankingInProgress = () => {
+		const validChars = service.characters.filter(c => !c.skip).length >= 2;
+		return (service.mode !== Mode.Edit || service.lastRankMode !== null) && validChars;
+	};
 
 	Object.defineProperty(service, 'rankingInProgress', {
 		get: () => service.getRankingInProgress(),
@@ -57,8 +62,59 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const t = totalTimeMs / 1000;
 
 		// If t > 120 (AFK), return 1.0.
-		// Otherwise, calculate the slope and clamp the result strictly between 0.3 and 1.0
+		// Otherwise, calculate slope clamped strictly between 0.3 and 1.0
 		return t > 120 ? 1.0 : Math.max(0.3, Math.min(1.0, 1.0 - ((t - 3) * 0.7 / 12)));
+	};
+
+	service._getMatchupSignature = (charA, charB) => {
+		if (!charA || !charB) return '';
+		// Sort names alphabetically so Left vs Right and Right vs Left generate the exact same string
+		return [charA.originalName, charB.originalName].sort().join('::');
+	};
+
+	service._recordMatchup = (charA, charB) => {
+		const sig = service._getMatchupSignature(charA, charB);
+		if (!sig) return;
+		service._recentMatchups.push(sig);
+		if (service._recentMatchups.length > MAX_RECENT_MATCHUPS) {
+			service._recentMatchups.shift();
+		}
+	};
+
+	// --- TrueSkill Helper Hydration ---
+	const OLD_ELO_BASELINE = 1200;
+
+	/**
+	 * Ensures a character object has valid TrueSkill properties (mu, sigma, tsRating, score)
+	 * and performs legacy Elo migration if necessary.
+	 */
+	service._hydrateCharacter = (c) => {
+		// 1. MIGRATION: Convert legacy Elo -> TrueSkill
+		if (typeof c.elo !== 'undefined' && typeof c.mu === 'undefined') {
+			c.mu = 25.0 + ((c.elo - OLD_ELO_BASELINE) / 40.0);
+			const matches = c.endlessMatches || c.totalMatches || ((c.wins || 0) + (c.losses || 0)) || 0;
+
+			if (matches === 0) {
+				c.sigma = 8.333;
+			} else {
+				c.sigma = 1.0 + (7.333 * Math.exp(-0.05 * matches));
+			}
+			delete c.elo;
+		}
+
+		// 2. UNSEEDED / NEW CHARACTERS
+		if (typeof c.mu === 'undefined') {
+			c.mu = 25.0;
+			c.sigma = 8.333;
+		}
+
+		// 3. HYDRATE TRUESKILL RATING OBJECT
+		c.tsRating = new window.tsTrueSkill.Rating(c.mu, c.sigma);
+
+		// 4. CALCULATE DISPLAY CONSERVATIVE SCORE (mu - 3*sigma)
+		c.score = trueSkillService.getConservativeScore(c.tsRating);
+
+		return c;
 	};
 
 	// --- Placement Matches State ---
@@ -73,48 +129,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	service.getPlacementState = () => placementState;
-
-	service.autoRescale = () => {
-		if (!service.characters || service.characters.length < 2) return;
-
-		// 1. Extract a pure array of just the Elo numbers
-		const currentElos = service.characters.map(char => char.elo);
-
-		// 2. Hand the math off to the Elo Engine (no bounds passed!)
-		const scaledElos = EloEngine.rescalePool(currentElos);
-
-		// 3. Map the newly calculated numbers back onto your character objects
-		service.characters.forEach((char, index) => {
-			char.elo = scaledElos[index];
-		});
-
-		$rootScope.$broadcast('charactersUpdated');
-	};
-
-	/**
-	 * DESTRUCTIVE: Re-planes all Elo scores to perfectly even intervals
-	 * using the existing seedInitialElo logic.
-	 */
-	service.replaneElos = () => {
-		if (!service.characters || service.characters.length < 2) return;
-
-		// Sort by current Elo (highest to lowest) to establish the true rank order
-		const sortedCharacters = [...service.characters].sort((a, b) => b.elo - a.elo);
-		const total = sortedCharacters.length;
-
-		// Abuse the existing seeder
-		sortedCharacters.forEach((char, index) => {
-			char.elo = EloEngine.seedInitialElo(index, total);
-		});
-
-		console.log(`🧹 Successfully re-planed ${total} characters.`);
-
-		// Trigger UI update
-		$rootScope.$broadcast('charactersUpdated');
-	};
-
-	// Expose globally for easy console access
-	window.replaneElos = service.replaneElos;
 
 	// --- SortableJS Controls ---
 	service.getSortableObject = () => {
@@ -149,23 +163,21 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const prevChar = newIndex > 0 ? service.characters[newIndex - 1] : null;
 		const nextChar = newIndex < service.characters.length - 1 ? service.characters[newIndex + 1] : null;
 
-		const safeElo = (char) => {
-			if (!char || typeof char.elo !== 'number' || Number.isNaN(char.elo)) {
-				return EloEngine.DEFAULT_ELO;
-			}
-			return char.elo;
-		};
+		// 1. Interpolate the exact conservative TARGET SCORE based on neighbors
+		const prevScore = prevChar ? prevChar.score : (nextChar ? nextChar.score + 1.0 : 25.0);
+		const nextScore = nextChar ? nextChar.score : (prevChar ? prevChar.score - 1.0 : 25.0);
+		const targetScore = (prevScore + nextScore) / 2;
 
-		const prevElo = safeElo(prevChar);
-		const nextElo = safeElo(nextChar);
+		// 2. Barely penalize sigma to prevent the score from crashing
+		movedChar.sigma = Math.min(8.333, (movedChar.sigma || 4.0) + 0.1);
 
-		if (prevChar && nextChar) {
-			movedChar.elo = (prevElo + nextElo) / 2;
-		} else if (prevChar) {
-			movedChar.elo = prevElo - 10; // Dropped at the absolute bottom
-		} else if (nextChar) {
-			movedChar.elo = nextElo + 10; // Dropped at the absolute top
-		}
+		// 3. Reverse engineer mu so the final conservative math precisely matches the UI drop position
+		movedChar.mu = targetScore + (3.0 * movedChar.sigma);
+		movedChar.tsRating = new window.tsTrueSkill.Rating(movedChar.mu, movedChar.sigma);
+		movedChar.score = trueSkillService.getConservativeScore(movedChar.tsRating);
+
+		// 4. CRITICAL: Cascade the new TrueSkill variables to all Follow-Me links!
+		service.reapplyLinks();
 
 		$rootScope.$broadcast('charactersUpdated');
 	};
@@ -175,9 +187,16 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		if (!character) return;
 
 		if (character.skip) {
-			character.elo = service.getLowestElo() - 10;
+			character.mu = service.getLowestMu() - 0.5;
+			character.tsRating = new window.tsTrueSkill.Rating(character.mu, character.sigma || 8.333);
+			character.score = trueSkillService.getConservativeScore(character.tsRating);
 		} else {
 			character.linkedTo = '';
+			if (character.sigma <= 0.001) {
+				character.sigma = 8.333;
+				character.tsRating = new window.tsTrueSkill.Rating(character.mu, character.sigma);
+				character.score = trueSkillService.getConservativeScore(character.tsRating);
+        	}
 		}
 
 		service.reapplyLinks();
@@ -191,11 +210,11 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service.getRightCompare = () => service.rightCompare;
 
 	service.getModeClassName = () => {
-		return service.getRankingInProgress() ? 'RankMode' : 'EditMode';
+		return service.mode !== Mode.Edit ? 'RankMode' : 'EditMode';
 	};
 
 	service.getNextModeName = () => {
-		return service.getRankingInProgress() ? 'Start Editing' : 'Start Ranking';
+		return service.mode !== Mode.Edit ? 'Start Editing' : 'Start Ranking';
 	};
 
 	// --- UI Component Utilities ---
@@ -212,7 +231,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 	service.clickCard = (element, index) => {
 		if (service.mode === Mode.Edit && index !== service.activeIndex) {
-			// FIX: Minimize current cards first without systematically re-enabling drag states
 			service.minimizeActiveCard(true);
 			service.disableSortable();
 			service.characters[index].className += ' CharacterFull';
@@ -243,7 +261,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service.clean = () => {
 		service.characters.length = 0;
 		service.mode = Mode.Edit;
-
 		service._undoStack.length = 0;
 
 		placementState.active = false;
@@ -253,29 +270,28 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	// --- Array Management & Sync ---
-	service.sortArrayByElo = () => {
-		service.characters.sort((a, b) => b.elo - a.elo);
+	service.sortArrayByScore = () => {
+		service.characters.sort((a, b) => b.score - a.score);
 	};
+
+	// Legacy Alias
+	service.sortArrayByElo = service.sortArrayByScore;
 
 	service.updateAll = (newCharacters) => {
 		service.characters.length = 0;
-		const total = newCharacters.length;
 
-		const processedCharacters = newCharacters.map((c, index) => {
+		const processedCharacters = newCharacters.map((c) => {
 			if (c.className) {
 				c.className = c.className.replace(/ ?CharacterFull( )?/, '');
-			}
-			if (typeof c.elo === 'undefined') {
-				c.elo = EloEngine.seedInitialElo(index, total);
 			}
 			if (typeof c.placementMatchesLeft === 'undefined') {
 				c.placementMatchesLeft = 0;
 			}
-			return c;
+			return service._hydrateCharacter(c);
 		});
 
 		service.characters.push(...processedCharacters);
-		service.sortArrayByElo();
+		service.sortArrayByScore();
 
 		if (!$rootScope.$$phase) {
 			$rootScope.$apply();
@@ -285,7 +301,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 	service.addNewCharacter = (originalName, seriesName, imageUrl, skip) => {
 		const characterName = originalName.replace(/(?: \([A-Z]+\))?/gi, '').trim();
-		const character = {
+		let character = {
 			className: 'CharacterThumb',
 			imageUrl: imageUrl,
 			minimizedName: Utilities.minimizeName(characterName),
@@ -295,15 +311,18 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			skip: skip,
 			linkedTo: '',
 			flag: false,
-			elo: EloEngine.DEFAULT_ELO,
+			mu: 25.0,
+			sigma: 8.333,
 			placementMatchesLeft: skip ? 0 : 5
 		};
+
+		character = service._hydrateCharacter(character);
 
 		service.characters.push(character);
 		if (!skip) {
 			service.startPlacementMatches([character]);
 		} else {
-			service.sortArrayByElo();
+			service.sortArrayByScore();
 			$rootScope.$broadcast('charactersUpdated');
 		}
 	};
@@ -315,17 +334,12 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			if (matchCharacter.originalName === character.originalName &&
 			   (matchCharacter.series === character.series || matchCharacter.series === 'Unknown Series' || character.series === 'Unknown Series')) {
 
-				// 1. Upgrade Series if the new paste provides missing context
 				if (matchCharacter.series === 'Unknown Series' && character.series !== 'Unknown Series') {
 					matchCharacter.series = character.series;
 				}
-
-				// 2. Upgrade Notes
 				if (character.note && character.note !== '') {
 					matchCharacter.note = character.note;
 				}
-
-				// 3. Aggressive Image Override (Drops the useless name sync)
 				if (character.imageUrl && character.imageUrl.trim() !== '') {
 					matchCharacter.imageUrl = character.imageUrl;
 				}
@@ -335,9 +349,9 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 
 		// --- BRAND NEW ARRIVAL ---
-		character.elo = EloEngine.DEFAULT_ELO;
 		character.placementMatchesLeft = character.skip ? 0 : 5;
 		character.flag = !character.skip;
+		character = service._hydrateCharacter(character);
 
 		service.characters.push(character);
 		return { code: 'NotFound', match: character };
@@ -359,8 +373,11 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const survivor = service.characters[survivorIndex];
 		const target = service.characters[targetIndex];
 
-		// 1. Steal Elo and Calibration
-		survivor.elo = target.elo;
+		// Steal TrueSkill stats
+		survivor.mu = target.mu;
+		survivor.sigma = target.sigma;
+		survivor.tsRating = target.tsRating;
+		survivor.score = target.score;
 		survivor.placementMatchesLeft = target.placementMatchesLeft;
 		survivor.skip = target.skip;
 
@@ -371,7 +388,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			survivor.flag = true;
 		}
 
-		// 2. Scavenge missing metadata
+		// Scavenge metadata
 		if ((!survivor.series || survivor.series === 'Unknown Series') && target.series && target.series !== 'Unknown Series') {
 			survivor.series = target.series;
 		}
@@ -382,7 +399,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			survivor.note = target.note;
 		}
 
-		// 3. Prevent Orphaned Links: Repoint any other characters that were following the target
+		// Repoint links
 		const targetOriginalLower = target.originalName.toLowerCase();
 		const targetMinLower = target.minimizedName.toLowerCase();
 
@@ -395,20 +412,16 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			}
 		});
 
-		// 4. Delete target
 		service.characters.splice(targetIndex, 1);
 
 		if (direction === -1) {
 			service.activeIndex--;
 		}
 
-		// 5. Cleanup UI
-		service.sortArrayByElo();
+		service.sortArrayByScore();
 		service.minimizeActiveCard(true);
 
-		Utilities.showSuccess(`Merged data! ${survivor.name} absorbed the old entry's stats and missing info.`, true);
-
-		// 6. Force the controller to save the newly merged state to localStorage immediately!
+		Utilities.showSuccess(`Merged data! ${survivor.name} absorbed the old entry's stats.`, true);
 		$rootScope.$broadcast('charactersUpdated');
 	};
 
@@ -429,17 +442,23 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		});
 
 		const processedSet = new Set();
-		let cascadeOffset = 0.001;
+		let cascadeOffset = 0.0001;
 
-		const insertWithLinks = (char, parentElo = null) => {
+		// Pass parentScore instead of parentMu
+		const insertWithLinks = (char, parentScore = null) => {
 			if (processedSet.has(char.originalName)) return;
 			processedSet.add(char.originalName);
 
-			if (parentElo !== null) {
-				char.elo = parentElo - cascadeOffset;
-				cascadeOffset += 0.001;
+			if (parentScore !== null) {
+				// Force sigma to 0, making Score exactly equal to Mu
+				char.mu = parentScore - cascadeOffset;
+				char.sigma = 0.001;
+				cascadeOffset += 0.0001;
+
+				char.tsRating = new window.tsTrueSkill.Rating(char.mu, char.sigma);
+				char.score = char.mu; // Since sigma is 0, score = mu
 			} else {
-				cascadeOffset = 0.001;
+				cascadeOffset = 0.0001;
 			}
 
 			finalArray.push(char);
@@ -452,7 +471,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			delete linkMap[target2];
 
 			links.forEach(linkedChar => {
-				insertWithLinks(linkedChar, char.elo);
+				// Pass the literal score down the chain
+				insertWithLinks(linkedChar, char.score);
 			});
 		};
 
@@ -480,10 +500,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const resolvedArray = service.resolveLinks(mainList, linkedList);
 		service.characters.length = 0;
 		service.characters.push(...resolvedArray);
-		service.sortArrayByElo();
+		service.sortArrayByScore();
 	};
 
-	// --- Advanced Binary-Elo Placement Matches Engine ---
+	// --- Placement Matches Engine ---
 	service.startPlacementMatches = (queueToInsert) => {
 		if (!queueToInsert || queueToInsert.length === 0) return false;
 
@@ -502,7 +522,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			service.mode = Mode.Edit;
 			service.characters.forEach(c => c.flag = false);
 
-			service.sortArrayByElo();
+			service.sortArrayByScore();
 			if (service._rankingContainer) service._rankingContainer.style.display = '';
 			Utilities.showSuccess('Placement matches complete!', true);
 			$rootScope.$broadcast('charactersUpdated');
@@ -510,143 +530,110 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 
 		placementState.target = placementState.queue.shift();
-		placementState.target.placementMatchesLeft = 3;
+		// TrueSkill typically requires ~5 matches to collapse the sigma (uncertainty) reliably
+		placementState.target.placementMatchesLeft = 5;
 
-		const activeRoster = service.characters
-			.filter(c => !c.skip && c !== placementState.target && !placementState.queue.includes(c))
-			.sort((a, b) => b.elo - a.elo);
-
-		placementState.phase = 'BINARY';
-		placementState.minIdx = 0;
-		placementState.maxIdx = Math.max(0, activeRoster.length - 1);
+		// Purge legacy phase trackers since TrueSkill handles the volatility naturally
 		placementState.history.clear();
 
 		return service.nextPlacementMatch();
 	};
 
 	service.nextPlacementMatch = () => {
+		// Check if the current target has finished their calibration rounds
+		if (placementState.target.placementMatchesLeft <= 0) {
+			return service.nextPlacementTarget();
+		}
+
 		const activeRoster = service.characters.filter(c =>
 			!c.skip &&
 			c !== placementState.target &&
 			!placementState.queue.includes(c)
-		).sort((a, b) => b.elo - a.elo);
+		);
 
-		// --- PHASE 1: BINARY SEARCH ---
-		if (placementState.phase === 'BINARY') {
-			if (placementState.minIdx > placementState.maxIdx) {
-				// Binary Search Complete! Calculate the exact baseline Elo.
-				const insertIdx = placementState.minIdx;
-				const prevChar = insertIdx > 0 ? activeRoster[insertIdx - 1] : null;
-				const nextChar = insertIdx < activeRoster.length ? activeRoster[insertIdx] : null;
-
-				if (prevChar && nextChar) {
-					placementState.target.elo = (prevChar.elo + nextChar.elo) / 2;
-				} else if (prevChar) {
-					placementState.target.elo = prevChar.elo - 10; // Absolute bottom
-				} else if (nextChar) {
-					placementState.target.elo = nextChar.elo + 10; // Absolute top
-				} else {
-					placementState.target.elo = EloEngine.DEFAULT_ELO;
-				}
-
-				// Transition to Phase 2
-				placementState.phase = 'POOLING';
-				service.sortArrayByElo();
-				return service.nextPlacementMatch();
-			}
-
-			// Pick the character exactly in the middle of our current index bounds
-			const midIdx = Math.floor((placementState.minIdx + placementState.maxIdx) / 2);
-			service.leftCompare = placementState.target;
-			service.rightCompare = activeRoster[midIdx];
-			return true;
+		if (activeRoster.length === 0) {
+			placementState.target.placementMatchesLeft = 0;
+			return service.nextPlacementTarget();
 		}
 
-		// --- PHASE 2: ELO POOLING ---
-		if (placementState.phase === 'POOLING') {
-			if (placementState.target.placementMatchesLeft <= 0) {
-				return service.nextPlacementTarget();
-			}
+		// 1. Strict filter: Exclude session placement history AND recent global matchups
+		let candidates = activeRoster.filter(c =>
+			!placementState.history.has(c.originalName) &&
+			!service._recentMatchups.includes(service._getMatchupSignature(placementState.target, c))
+		);
 
-			// Only pool against characters that have finished their own placement
-			const poolCandidates = activeRoster.filter(c => c.placementMatchesLeft <= 0);
+		// 2. Fallback: If the pool is exhausted, drop the global buffer block first
+		if (candidates.length === 0) {
+			candidates = activeRoster.filter(c => !placementState.history.has(c.originalName));
+		}
 
-			if (poolCandidates.length === 0) {
-				placementState.target.placementMatchesLeft = 0;
-				return service.nextPlacementTarget();
-			}
+		// 3. Absolute Fallback: Clear placement amnesia entirely if needed
+		if (candidates.length === 0) {
+			placementState.history.clear();
+			candidates = activeRoster;
+		}
 
-			let candidates = poolCandidates.filter(c => !placementState.history.has(c.originalName));
-			if (candidates.length === 0) {
-				placementState.history.clear();
-				candidates = poolCandidates;
-			}
+		// Sort by closest mean skill (mu). We use mu instead of conservative score
+		// here so the system tests if they truly belong at their current temporary level
+		candidates.sort((a, b) => Math.abs(a.mu - placementState.target.mu) - Math.abs(b.mu - placementState.target.mu));
 
-			// Find opponents with the closest Elo to our newly calibrated target
-			candidates.sort((a, b) => Math.abs(a.elo - placementState.target.elo) - Math.abs(b.elo - placementState.target.elo));
+		service.leftCompare = placementState.target;
 
-			service.leftCompare = placementState.target;
+		// Pull from the top 3 closest opponents to introduce slight matchmaking variety
+		const poolSize = Math.min(3, candidates.length);
+		service.rightCompare = candidates[Math.floor(Math.random() * poolSize)];
+		service._markMatchStart();
 
-			// Grab one of the top 3 closest Elos randomly so they don't face the exact same person repeatedly
-			const poolSize = Math.min(3, candidates.length);
-			service.rightCompare = candidates[Math.floor(Math.random() * poolSize)];
-			service._markMatchStart();
+		return true;
+	};
 
-			return true;
+	service._applyMatchResult = (leftWon) => {
+		const winner = leftWon ? service.leftCompare : service.rightCompare;
+		const loser = leftWon ? service.rightCompare : service.leftCompare;
+
+		// Let the trueSkillService calculate the heavy Bayesian math
+		const [newWinnerRating, newLoserRating] = trueSkillService.calculateMatch(winner.tsRating, loser.tsRating);
+
+		// Update Winner
+		winner.tsRating = newWinnerRating;
+		winner.mu = newWinnerRating.mu;
+		winner.sigma = newWinnerRating.sigma;
+		winner.score = trueSkillService.getConservativeScore(newWinnerRating);
+
+		// Update Loser
+		loser.tsRating = newLoserRating;
+		loser.mu = newLoserRating.mu;
+		loser.sigma = newLoserRating.sigma;
+		loser.score = trueSkillService.getConservativeScore(newLoserRating);
+
+		if (service.leftCompare && service.rightCompare) {
+			service._recordMatchup(service.leftCompare, service.rightCompare);
 		}
 	};
 
 	service.handlePlacementDecision = (leftWon) => {
-		// --- PHASE 1: BINARY SEARCH ---
-		if (placementState.phase === 'BINARY') {
-			const midIdx = Math.floor((placementState.minIdx + placementState.maxIdx) / 2);
+		// Record the opponent so we don't fight them again in this calibration block
+		placementState.history.add(service.rightCompare.originalName);
 
-			// Note: Array index 0 is the HIGHEST Elo.
-			// If left (the target) wins, they belong higher up the list (lower index).
-			if (leftWon) {
-				placementState.maxIdx = midIdx - 1;
-			} else {
-				placementState.minIdx = midIdx + 1;
-			}
+		// Calculate and apply the updated TrueSkill ratings
+		service._applyMatchResult(leftWon);
 
-			return service.nextPlacementMatch();
-		}
+		// Tick up the global play counts
+		service.leftCompare.totalMatches = (service.leftCompare.totalMatches || 0) + 1;
+		service.rightCompare.totalMatches = (service.rightCompare.totalMatches || 0) + 1;
 
-		// --- PHASE 2: ELO POOLING ---
-		if (placementState.phase === 'POOLING') {
-			placementState.history.add(service.rightCompare.originalName);
+		// Apply sorting matrix & UI sync
+		service.sortArrayByScore();
+		placementState.target.placementMatchesLeft--;
+		$rootScope.$broadcast('charactersUpdated');
 
-			const rightMatches = typeof service.rightCompare.totalMatches === 'number'
-				? service.rightCompare.totalMatches
-				: 50;
-
-			const matchResult = EloEngine.calculateMatch(
-				service.leftCompare.elo,
-				service.rightCompare.elo,
-				leftWon ? 1 : 0,
-				service.leftCompare.totalMatches || 0,
-				rightMatches,
-				service._getLatencyMultiplier()
-			);
-
-			service.leftCompare.elo = matchResult.newRatingA;
-			service.rightCompare.elo = matchResult.newRatingB;
-
-			service.leftCompare.totalMatches = (service.leftCompare.totalMatches || 0) + 1;
-			service.rightCompare.totalMatches = rightMatches + 1;
-
-			service.sortArrayByElo();
-			placementState.target.placementMatchesLeft--;
-			$rootScope.$broadcast('charactersUpdated');
-
-			return service.nextPlacementMatch();
-		}
+		return service.nextPlacementMatch();
 	};
 
 	// --- Endless Rank Engine ---
 	service.startEndlessRank = () => {
 		if (service.getRankingInProgress() && service.mode !== Mode.Endless) {
-			Utilities.showWarning("A calibration session is already active. Please pause or finish it before entering Endless Rank.", true);
+			Utilities.showWarning("A calibration session is active. Please pause/finish it before entering Endless Rank.", true);
 			return false;
 		}
 
@@ -669,40 +656,40 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			return;
 		}
 
-		// 1. Initialize trackers for any new arrivals
 		validChars.forEach(c => {
 			if (typeof c.endlessMatches === 'undefined') c.endlessMatches = 0;
 		});
 
-		// 2. Sort the roster to prioritize characters with the fewest endless matches
 		validChars.sort((a, b) => a.endlessMatches - b.endlessMatches);
 
-		// 3. Pick the Left Character from a rotating pool of the bottom 15% least-played characters.
-		// This guarantees even distribution while keeping the exact character slightly unpredictable.
 		const poolSizeLeft = Math.max(2, Math.min(15, Math.floor(validChars.length * 0.15)));
 		const leftIndex = Math.floor(Math.random() * poolSizeLeft);
 		service.leftCompare = validChars[leftIndex];
 
-		// 4. Find the Right Character (Opponent)
-		const candidates = validChars.filter(c => c !== service.leftCompare);
+		// 1. Base candidate list
+		const allCandidates = validChars.filter(c => c !== service.leftCompare);
+
+		// 2. Filter out anyone we recently fought
+		let candidates = allCandidates.filter(c =>
+			!service._recentMatchups.includes(service._getMatchupSignature(service.leftCompare, c))
+		);
+
+		// 3. Fallback: If everyone is on cooldown, ignore the cooldown
+		if (candidates.length === 0) {
+			candidates = allCandidates;
+		}
 
 		candidates.sort((a, b) => {
-			// Calculate standard Elo distance
-			const eloDiffA = Math.abs(a.elo - service.leftCompare.elo);
-			const eloDiffB = Math.abs(b.elo - service.leftCompare.elo);
+			const qualityA = trueSkillService.getMatchQuality(service.leftCompare.tsRating, a.tsRating);
+			const qualityB = trueSkillService.getMatchQuality(service.leftCompare.tsRating, b.tsRating);
 
-			// MASSIVE penalty for having played matches.
-			// 500 points means a character with 1 match will almost NEVER be picked
-			// over a character with 0 matches, regardless of how close their Elos are.
-			const weightA = eloDiffA + (a.endlessMatches * 500);
-			const weightB = eloDiffB + (b.endlessMatches * 500);
+			// Match quality penalty combined with endlessMatches weighting
+			const weightA = (1.0 - qualityA) + (a.endlessMatches * 2.0);
+			const weightB = (1.0 - qualityB) + (b.endlessMatches * 2.0);
 
 			return weightA - weightB;
 		});
 
-		// Widen the pool from 15 to 30!
-		// This means it will randomly grab one of the top 30 candidates,
-		// introducing much more variety even if they aren't a perfect Elo match.
 		const rightPoolSize = Math.min(30, candidates.length);
 		const rightIndex = Math.floor(Math.random() * rightPoolSize);
 		service.rightCompare = candidates[rightIndex];
@@ -710,18 +697,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	service.handleEndlessDecision = (leftWon) => {
-		const matchResult = EloEngine.calculateMatch(
-			service.leftCompare.elo,
-			service.rightCompare.elo,
-			leftWon ? 1 : 0,
-			service.leftCompare.endlessMatches || 0,
-			service.rightCompare.endlessMatches || 0,
-			service._getLatencyMultiplier()
-		);
+		// Calculate and apply the updated TrueSkill ratings
+		service._applyMatchResult(leftWon);
 
-		service.leftCompare.elo = matchResult.newRatingA;
-		service.rightCompare.elo = matchResult.newRatingB;
-
+		// Tick up endless play counts
 		service.leftCompare.endlessMatches = (service.leftCompare.endlessMatches || 0) + 1;
 		service.rightCompare.endlessMatches = (service.rightCompare.endlessMatches || 0) + 1;
 
@@ -732,33 +711,43 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	// --- Unified Interaction Handlers ---
 	service.selectLeft = () => {
 		service._saveUndoState();
+
 		if (service.mode === Mode.Placement) return service.handlePlacementDecision(true);
 		if (service.mode === Mode.Endless) return service.handleEndlessDecision(true);
-
-		PreferenceList.addAnswer(-1);
-		service.presentCardsForComparison();
+		if (service.mode === Mode.RankFinite) return service.handleRankDecision(true);
 	};
 
 	service.selectRight = () => {
 		service._saveUndoState();
+
 		if (service.mode === Mode.Placement) return service.handlePlacementDecision(false);
 		if (service.mode === Mode.Endless) return service.handleEndlessDecision(false);
-
-		PreferenceList.addAnswer(1);
-		service.presentCardsForComparison();
+		if (service.mode === Mode.RankFinite) return service.handleRankDecision(false);
 	};
 
-	service.getLowestElo = () => {
-		let lowest = EloEngine.MIN_ELO;
+	service.getLowestMu = () => {
+		let lowest = 100.0;
 		service.characters.forEach(c => {
-			if (c.elo < lowest) lowest = c.elo;
+			if (typeof c.mu === 'number' && c.mu < lowest) lowest = c.mu;
 		});
-		return lowest;
+		return lowest === 100.0 ? 10.0 : lowest;
 	};
+
+	service.getLowestScore = () => {
+		let lowest = 100.0;
+		service.characters.forEach(c => {
+			if (typeof c.score === 'number' && c.score < lowest) lowest = c.score;
+		});
+		return lowest === 100.0 ? 0.0 : lowest;
+	};
+
+	service.getLowestElo = service.getLowestScore;
 
 	service.executeSkip = (character) => {
 		character.skip = true;
-		character.elo = service.getLowestElo() - 10;
+		character.mu = service.getLowestMu() - 0.5;
+		character.tsRating = new window.tsTrueSkill.Rating(character.mu, character.sigma || 8.333);
+		character.score = trueSkillService.getConservativeScore(character.tsRating);
 		service.reapplyLinks();
 		$rootScope.$broadcast('charactersUpdated');
 	};
@@ -778,7 +767,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const skipped = service._rankedCharacters.splice(service._currentLeftIndex, 1).pop();
 		skipped.skip = true;
 		service._discardedCharacters.push(skipped);
-		PreferenceList.addAnswer(0);
 		service.presentCardsForComparison();
 	};
 
@@ -796,7 +784,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const skipped = service._rankedCharacters.splice(service._currentRightIndex, 1).pop();
 		skipped.skip = true;
 		service._discardedCharacters.push(skipped);
-		PreferenceList.addAnswer(0);
 		service.presentCardsForComparison();
 	};
 
@@ -816,10 +803,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		if (service.mode === Mode.RankFinite) {
 			state.rankedCharacters = angular.copy(service._rankedCharacters);
 			state.discardedCharacters = angular.copy(service._discardedCharacters);
-			state.prefState = angular.copy(PreferenceList.getState());
-		}
-		// FIX: Convert the Set into a serializable Array and store tracking ranges
-		else if (service.mode === Mode.Placement) {
+		} else if (service.mode === Mode.Placement) {
 			state.placementState = {
 				active: placementState.active,
 				minIdx: placementState.minIdx,
@@ -839,7 +823,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const prevState = service._undoStack.pop();
 
 		service.characters.length = 0;
-		service.characters.push(...prevState.characters);
+		const restoredChars = prevState.characters.map(c => service._hydrateCharacter(c));
+		service.characters.push(...restoredChars);
 		service.mode = prevState.mode;
 
 		if (prevState.leftOriginalName) {
@@ -852,11 +837,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		if (service.mode === Mode.RankFinite) {
 			service._rankedCharacters = prevState.rankedCharacters.map(c => service.characters.find(g => g.originalName === c.originalName));
 			service._discardedCharacters = prevState.discardedCharacters.map(c => service.characters.find(g => g.originalName === c.originalName));
-			PreferenceList.setState(prevState.prefState);
 			service.presentCardsForComparison();
-		}
-		// FIX: Fully restore limits and hydrate the ES6 history Set cleanly
-		else if (service.mode === Mode.Placement) {
+		} else if (service.mode === Mode.Placement) {
 			placementState.active = prevState.placementState.active;
 			placementState.minIdx = prevState.placementState.minIdx;
 			placementState.maxIdx = prevState.placementState.maxIdx;
@@ -881,90 +863,120 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	// --- General UI, Parser, & Lifecycles ---
-	service.setupRankMode = () => {
-		service.mode = Mode.RankFinite;
-		service._rankedCharacters = [];
-		service._discardedCharacters = [];
-
-		service.characters.forEach(character => {
-			if (character.skip) service._discardedCharacters.push(character);
-			else service._rankedCharacters.push(character);
-		});
-
-	}
-
 	service.startRankMode = () => {
-		service.setupRankMode();
-		PreferenceList.resetToCount(service._rankedCharacters.length);
-		service.presentCardsForComparison();
+		const validChars = service.characters.filter(c => !c.skip);
+		if (validChars.length < 2) {
+			Utilities.showWarning("Not enough characters to run a ranking bracket.", true);
+			return false;
+		}
+
+		service.minimizeActiveCard(true);
+		service.mode = Mode.RankFinite;
+		service.lastRankMode = null;
+
+		// Reset Swiss tracking for a fresh tournament
+		validChars.forEach(c => c.swissMatches = 0);
+
+		// Calculate max rounds based on pool size.
+		// log2(N) gives the minimum rounds for a perfect bracket, +1 adds TrueSkill confidence buffer.
+		service._maxSwissRounds = Math.max(3, Math.ceil(Math.log2(validChars.length)) + 1);
+
+		// Independent history tracker just for the active Swiss tournament
+		service._swissHistory = new Set();
+
+		return service.nextRankMatch();
 	};
 
 	service.resumeRankMode = () => {
-		service.setupRankMode();
-
-		PreferenceList.resume(service._rankedCharacters.length);
-		service.presentCardsForComparison();
-	};
-
-	service.presentCardsForComparison = () => {
-		const displayCards = PreferenceList.getQuestion();
-		if (displayCards) {
-			service._currentLeftIndex = displayCards.leftCompareIndex;
-			service._currentRightIndex = displayCards.rightCompareIndex;
-			service.leftCompare = service._rankedCharacters[service._currentLeftIndex];
-			service.rightCompare = service._rankedCharacters[service._currentRightIndex];
-
-			$rootScope.$broadcast('charactersUpdated');
-		} else {
-			service.endRankMode();
+		if (service.mode === Mode.Edit) {
+			service.mode = service.lastRankMode || Mode.RankFinite;
 		}
-	};
+		service.lastRankMode = null
 
-	service.endRankMode = () => {
-		const sortedIndices = PreferenceList.getOrder();
-		const totalRanked = sortedIndices.length;
-
-		// 1. Rebuild the ranked array based on the manual sort order
-		const rankedCharacters = sortedIndices.map((originalIndex, newRank) => {
-			const char = service._rankedCharacters[originalIndex];
-			char.elo = EloEngine.seedInitialElo(newRank, totalRanked);
-
-			return char;
-		});
-
-		// 2. Weave the skipped characters back in
-		const newCharacters = service.resolveLinks(rankedCharacters, service._discardedCharacters);
-
-		// 3. Shutdown the UI and trigger the save
-		service.mode = Mode.Edit;
-		service.updateAll(newCharacters);
+		// Both Swiss and Placement natively save their progress to the characters,
+		// so resuming is just picking up where the generator left off.
+		if (service.mode === Mode.RankFinite) return service.nextRankMatch();
+		if (service.mode === Mode.Placement) return service.nextPlacementMatch();
+		if (service.mode === Mode.Endless) return service.nextEndlessMatch();
 	};
 
 	service.pauseRankMode = () => {
 		if (service.mode === Mode.Placement) {
-			placementState.active = false;
+			// Clear placement queue flags
 			service.characters.forEach(c => c.flag = false);
-		} else if (service.mode === Mode.RankFinite) {
-			PreferenceList.pause();
-			const sortedIndices = PreferenceList.getOrder();
-			PreferenceList.sortIndices();
+		}
 
-			const total = sortedIndices.length;
-			const newCharacters = sortedIndices.map(idx => service._rankedCharacters[idx]);
-
-			sortedIndices.sort((a, b) => a - b);
-			for (let i = total - 1; i >= 0; i--) {
-				service._rankedCharacters.splice(sortedIndices[i], 1);
-			}
-
-			newCharacters.push(...service._rankedCharacters, ...service._discardedCharacters);
-			service.updateAll(newCharacters);
+		if (service.mode !== Mode.Edit) {
+			service.lastRankMode = service.mode;
 		}
 
 		service.mode = Mode.Edit;
 		service.reapplyLinks();
-		service.sortArrayByElo();
+		service.sortArrayByScore();
+
+		if (service._rankingContainer) service._rankingContainer.style.display = '';
 		$rootScope.$broadcast('charactersUpdated');
+	};
+
+	service.nextRankMatch = () => {
+		const validChars = service.characters.filter(c => !c.skip);
+
+		// Filter out characters that have finished their mandated rounds
+		const activePool = validChars.filter(c => (c.swissMatches || 0) < service._maxSwissRounds);
+
+		if (activePool.length < 2) {
+			// Tournament is over!
+			Utilities.showSuccess(`Rank calibration complete! Simulated ${service._maxSwissRounds} Swiss rounds.`, true);
+			service.pauseRankMode();
+			return false;
+		}
+
+		// Sort by TrueSkill conservative score to enforce Swiss pairing (winners play winners)
+		activePool.sort((a, b) => b.score - a.score);
+
+		// Pick the highest-ranking character who still needs a match
+		service.leftCompare = activePool[0];
+
+		// Scan down the bracket to find the closest opponent they haven't fought yet
+		let opponent = null;
+		for (let i = 1; i < activePool.length; i++) {
+			const candidate = activePool[i];
+			const sig = service._getMatchupSignature(service.leftCompare, candidate);
+
+			if (!service._swissHistory.has(sig)) {
+				opponent = candidate;
+				break;
+			}
+		}
+
+		// Fallback: If everyone nearby is a duplicate match, ignore history to prevent soft-locks
+		if (!opponent) {
+			opponent = activePool[1];
+		}
+
+		service.rightCompare = opponent;
+		service._markMatchStart();
+		return true;
+	};
+
+	service.handleRankDecision = (leftWon) => {
+		// Record the fight to prevent immediate rematches in the Swiss bracket
+		const sig = service._getMatchupSignature(service.leftCompare, service.rightCompare);
+		service._swissHistory.add(sig);
+
+		// Apply the unified TrueSkill math
+		service._applyMatchResult(leftWon);
+
+		// Tick Swiss rounds
+		service.leftCompare.swissMatches = (service.leftCompare.swissMatches || 0) + 1;
+		service.rightCompare.swissMatches = (service.rightCompare.swissMatches || 0) + 1;
+
+		// Sync global match counts
+		service.leftCompare.totalMatches = (service.leftCompare.totalMatches || 0) + 1;
+		service.rightCompare.totalMatches = (service.rightCompare.totalMatches || 0) + 1;
+
+		$rootScope.$broadcast('charactersUpdated');
+		return service.nextRankMatch();
 	};
 
 	service.updateCharacterImage = (index, source) => {
@@ -972,18 +984,37 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		if (!$rootScope.$$phase) $rootScope.$apply();
 	};
 
+	service.exportRoster = () => {
+		return service.characters.map(c => {
+			return {
+				id: c.id,
+				name: c.name,
+				originalName: c.originalName,
+				minimizedName: c.minimizedName,
+				series: c.series,
+				imageUrl: c.imageUrl,
+				note: c.note,
+				skip: c.skip,
+				linkedTo: c.linkedTo,
+				mu: c.mu,
+				sigma: c.sigma,
+				endlessMatches: c.endlessMatches,
+				totalMatches: c.totalMatches
+			};
+		});
+	};
+
 	service.exportJson = () => {
 		const exportData = {
 			appState: {
 				rankingInProgress: service.getRankingInProgress(),
-				preferenceState: PreferenceList.getState()
 			},
-			characters: service.characters
+			characters: service.exportRoster()
 		};
 		Utilities.showSuccess(angular.toJson(exportData), false);
 	};
 
-	// --- Smart Bulk Actions & Exports ---
+	// --- Bulk Actions & Exports ---
 	service.getFlaggedCharacters = () => {
 		return service.characters.filter(c => c.flag);
 	};
@@ -992,7 +1023,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		service.characters.forEach(c => /** @type {Object} */ (c).flag = false);
 	};
 
-	// Delete MUST always remain strictly bound to flagged items to prevent nuking the database.
 	service.massDeleteFlagged = () => {
 		return new Promise((resolve, reject) => {
 			const flaggedCount = service.getFlaggedCharacters().length;
@@ -1005,7 +1035,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 						service.characters.splice(i, 1);
 					}
 				}
-				service.sortArrayByElo();
+				service.sortArrayByScore();
 				service.inMessageBox = false;
 				resolve();
 			}).fail(() => {
@@ -1039,7 +1069,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		for (let i = 0; i < tierConfig.length; i++) {
 			const tier = tierConfig[i];
-
 			const chunkSize = (tier.size === -1 || !tier.size) ? (total - currentListIndex) : tier.size;
 
 			for (let j = 0; j < chunkSize; j++) {
@@ -1063,9 +1092,13 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		let updatedCount = 0;
 		targetList.forEach(c => {
 			c.skip = shouldSkip;
-			// If un-skipping, wipe any dangling links cleanly
 			if (!shouldSkip) {
 				c.linkedTo = '';
+				if (c.sigma <= 0.001) {
+					c.sigma = 8.333;
+					c.tsRating = new window.tsTrueSkill.Rating(c.mu, c.sigma);
+					c.score = trueSkillService.getConservativeScore(c.tsRating);
+				}
 			}
 			updatedCount++;
 		});
@@ -1081,18 +1114,15 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const searchLower = targetCharacterName.trim().toLowerCase();
 		let finalLinkText = targetCharacterName.trim();
 
-		// 1. Scan the database to find the canonical leader card
 		const leader = service.characters.find(char =>
 			(char.originalName && char.originalName.toLowerCase() === searchLower) ||
 			(char.minimizedName && char.minimizedName.toLowerCase() === searchLower)
 		);
 
 		if (leader) {
-			// 2. If the character exists, ground the foreign key to its true minimized identity
 			finalLinkText = leader.minimizedName;
 		}
 
-		// 3. Batch apply the sanitized reference to targets
 		let updatedCount = 0;
 		targetList.forEach(c => {
 			/** @type {Object} */ (c).skip = true;
@@ -1100,13 +1130,11 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			updatedCount++;
 		});
 
-		// 4. Force compilation and sorting matrix updates
 		service.reapplyLinks();
-
 		return updatedCount;
 	};
 
-	// --- Smart Note Export: Includes Skipped Characters ---
+	// --- Smart Note Export ---
 	service.exportNoteCommand = () => {
 		const flagged = service.getFlaggedCharacters();
 		const targetList = flagged.length > 0 ? flagged : [...service.characters];
@@ -1116,7 +1144,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			return;
 		}
 
-		// 1. Group characters by their exact note string
 		const noteGroups = {};
 		targetList.forEach(c => {
 			const note = (c.note || '').trim();
@@ -1131,7 +1158,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			return;
 		}
 
-		// 2. Dynamically pack chunks up to Discord's limit
 		let output = '';
 		const MAX_DISCORD_LENGTH = 1900;
 
@@ -1159,7 +1185,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		Utilities.showSuccess(output.trim(), false);
 	};
 
-	// --- Smart Sort Export: Includes Skipped & Linked Chains ---
+	// --- Smart Sort Export ---
 	service.exportSort = () => {
 		const flagged = service.getFlaggedCharacters();
 		const targetList = flagged.length > 0 ? flagged : [...service.characters];
@@ -1174,8 +1200,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			return;
 		}
 
-		// Ensure the local clone matches absolute Elo alignment
-		targetList.sort((a, b) => b.elo - a.elo);
+		targetList.sort((a, b) => b.score - a.score);
 
 		let output = '';
 		if (flagged.length === 0) {
@@ -1236,14 +1261,12 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 					const charsToMerge = jsonInput.characters ? jsonInput.characters : (Array.isArray(jsonInput) ? jsonInput : []);
 					service.mergeAll(charsToMerge);
 				} else {
-					// FIX: Re-hydrate legacy metadata states and lists during JSON ingest loops
 					if (jsonInput.appState) {
 						if (jsonInput.appState.rankingInProgress) service.mode = Mode.RankFinite;
-						if (jsonInput.appState.preferenceState) PreferenceList.setState(jsonInput.appState.preferenceState);
 					}
 					service.updateAll(jsonInput.characters ? jsonInput.characters : jsonInput);
 				}
-				service.sortArrayByElo();
+				service.sortArrayByScore();
 
 				if (service.mode === Mode.RankFinite) {
 					service.resumeRankMode();
@@ -1274,7 +1297,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			const seriesName = seriesData.splice(0,1)[0].trim();
 			const series = { name: seriesName, characters: [], page: 1 };
 
-			// FIX: Use a discrete state flag to properly evaluate lookups per-series block
 			let lookupRequiredForSeries = false;
 
 			seriesData.forEach(characterString => {
@@ -1313,6 +1335,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 					placementMatchesLeft: 0
 				};
 
+				character = service._hydrateCharacter(character);
+
 				const needsLookupForThisCharacter = (imageURLIndex === -1);
 
 				if (mergeCharacters) {
@@ -1336,13 +1360,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			if (lookupRequiredForSeries) seriesArray.push(series);
 		});
 
-		service.characters.forEach((c, index) => {
-			if (typeof c.elo === 'undefined') {
-				c.elo = EloEngine.seedInitialElo(index, service.characters.length);
-			}
-		});
-
-		service.sortArrayByElo();
+		service.characters.forEach(c => service._hydrateCharacter(c));
+		service.sortArrayByScore();
 
 		if (seriesArray.length > 0) {
 			Utilities.showWarning('Looking up characters from AniList', true);
@@ -1360,13 +1379,12 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		$rootScope.$broadcast('charactersUpdated');
 	};
 
-	// 1. Kickoff the flow: Kick the user over to GitHub's authorization page
+	// --- GitHub Sync Methods ---
 	service.redirectToGitHub = (clientId) => {
 		const redirectUri = window.location.origin + window.location.pathname;
 		window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=gist&redirect_uri=${encodeURIComponent(redirectUri)}`;
 	};
 
-	// 2. Exchange the temporary URL code for a functional bearer token
 	service.exchangeAuthCodeForToken = (workerUrl, authCode) => {
 		return $http({
 			method: 'POST',
@@ -1381,7 +1399,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		});
 	};
 
-	// Scans for an existing file, or creates a new private backup slot if missing
 	service.findOrCreateSyncGist = (token) => {
 		const filename = "mudae_ranker_sync.json";
 		const headers = {
@@ -1389,31 +1406,28 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			'Accept': 'application/vnd.github+json'
 		};
 
-		// Step A: Fetch user's recent gists (up to 100)
 		return $http({
 			method: 'GET',
 			url: 'https://api.github.com/gists?per_page=100',
 			headers: headers
 		}).then(response => {
 			const gists = response.data || [];
-			// Look for an existing gist holding our target file
 			const existingGist = gists.find(g => g.files && g.files[filename]);
 
 			if (existingGist) {
 				return { id: existingGist.id, isNew: false };
 			}
 
-			// Step B: If no gist exists, initialize a brand new private one
 			return $http({
 				method: 'POST',
 				url: 'https://api.github.com/gists',
 				headers: headers,
 				data: {
 					description: "Mudae Ranker Cross-device Sync Data",
-					public: false, // Keeps it hidden from their public GitHub profile
+					public: false,
 					files: {
 						[filename]: {
-							content: angular.toJson(service.characters || [])
+							content: angular.toJson(service.exportRoster())
 						}
 					}
 				}
@@ -1423,9 +1437,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		});
 	};
 
-	// Explicitly downloads data from a confirmed tracking Gist slot
 	service.loadFromGist = (token, gistId) => {
-		// Generate a unique timestamp to bypass the cache
 		const cacheBuster = new Date().getTime();
 
 		return $http({
@@ -1445,6 +1457,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	service.saveToGist = (token, gistId, characterData) => {
+		const payload = Array.isArray(characterData) ? characterData : service.exportRoster();
 		return $http({
 			method: 'PATCH',
 			url: `https://api.github.com/gists/${gistId}`,
@@ -1455,7 +1468,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			data: {
 				files: {
 					"mudae_ranker_sync.json": {
-						content: angular.toJson(characterData || [])
+						content: angular.toJson(payload)
 					}
 				}
 			}
@@ -1472,19 +1485,15 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		});
 
 		$http.post(service.anilistApiUrl, queryBody, service.anilistConfig).then(response => {
-			// FIX: Secure deep object extraction path against non-existent Media structures
 			const dataPayload = response.data ? response.data.data : null;
 			const mediaData = dataPayload ? dataPayload['Media'] : null;
 
-			// Check for missing data structures or zero-match results
 			if (!mediaData || !mediaData['characters'] || !mediaData['characters']['edges']) {
 				console.warn(`AniList database yielded zero matching results for series: "${series.name}"`);
-
-				// CRITICAL PATH: Allow the sequence to cleanly complete and terminate if this was the last array item
 				if (seriesArray.length === 0) {
 					$interval.cancel(service.anilistReqInterval);
 				}
-				return; // Bail out safely without throwing runtime crashes
+				return;
 			}
 
 			const characterList = mediaData['characters']['edges'];
@@ -1531,7 +1540,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 				}
 			});
 
-			// If the series still has unresolved entries and pagination is available, cycle back in
 			if (localCharactersLength > 0 && mediaData['characters']['pageInfo']['hasNextPage']) {
 				series.page++;
 				seriesArray.push(series);
@@ -1542,8 +1550,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			}
 		}).catch(err => {
 			console.error("Hard network failure occurred during AniList fetch operations:", err);
-
-			// FAIL-SAFE: Mirror the termination safety path to handle absolute server drop-offs/CORS blocks
 			if (seriesArray.length === 0) {
 				$interval.cancel(service.anilistReqInterval);
 			}

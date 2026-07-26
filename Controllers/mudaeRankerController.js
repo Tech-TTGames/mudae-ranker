@@ -1,4 +1,4 @@
-mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 'Characters', 'PreferenceList', 'Utilities', '$rootScope', function($scope, $http, $timeout, Characters, PreferenceList, Utilities, $rootScope) {
+mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 'Characters', 'Utilities', '$rootScope', function($scope, $http, $timeout, Characters, Utilities, $rootScope) {
 	$scope.characters = Characters.getCharacters();
 	$scope.getModeClassName = Characters.getModeClassName;
 	$scope.getNextModeName = Characters.getNextModeName;
@@ -12,20 +12,31 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 		if (Characters.mode === Characters.Modes.Endless) {
 			return "∞ Endless Mode";
 		} else if (Characters.mode === Characters.Modes.Placement) {
-			const pState = Characters.getPlacementState();
-			// Handle the new Two-Phase architecture
-			if (pState && pState.phase === 'BINARY') {
-				// Calculate how many characters are left in the narrowing search bounds
-				const bounds = Math.max(0, (pState.maxIdx - pState.minIdx) + 1);
-				return `Phase 1: Binary Search (Window: ${bounds})`;
-			} else {
-				const target = Characters.getLeftCompare();
-				return `Phase 2: Fine-Tuning (${target ? target.placementMatchesLeft : 0} left)`;
-			}
-		} else {
-			// Finite Mode Fallback
-			return PreferenceList.currentIndex + " / " + PreferenceList.size;
+			const target = Characters.getLeftCompare();
+			const left = target ? target.placementMatchesLeft : 0;
+			return `Calibration Phase: ${left} match(es) remaining`;
+		} else if (Characters.mode === Characters.Modes.RankFinite) {
+			// --- TrueSkill Swiss Bracket Progress ---
+			const leftChar = Characters.getLeftCompare();
+			if (!leftChar) return "Calculating bracket...";
+
+			// Calculate what round the current character is on
+			const currentRound = (leftChar.swissMatches || 0) + 1;
+			const maxRounds = Characters._maxSwissRounds || 3;
+
+			// Calculate total bracket progress across all characters
+			const activeChars = Characters.characters.filter(c => !c.skip);
+			const totalMatchesNeeded = Math.ceil((activeChars.length * maxRounds) / 2);
+
+			// Sum up all completed matches (divided by 2 since 2 characters play in 1 match)
+			const currentMatchesPlayed = Math.floor(
+			   activeChars.reduce((sum, c) => sum + (c.swissMatches || 0), 0) / 2
+			);
+
+			return `Swiss Bracket: Match ${currentMatchesPlayed + 1} / ${totalMatchesNeeded} (Round ${currentRound}/${maxRounds})`;
 		}
+
+		return "";
 	};
 
 	// --- Expose Endless Rank to UI ---
@@ -67,7 +78,6 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			appState: {
 				rankingInProgress: Characters.getRankingInProgress(),
 				activeMode: Characters.mode,
-				preferenceState: PreferenceList.getState()
 			},
 			characters: Characters.getCharacters(),
 			tierConfig: $scope.tierConfig,
@@ -87,15 +97,12 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			} else if (parsed.appState.rankingInProgress) {
 				Characters.mode = Characters.Modes.RankFinite;
 			}
-			if (parsed.appState.preferenceState) PreferenceList.setState(parsed.appState.preferenceState);
 		}
 
 		const chars = parsed.characters ? parsed.characters : (Array.isArray(parsed) ? parsed : []);
 		if (chars.length > 0) {
 			Characters.updateAll(chars);
 		}
-
-		Characters.autoresize();
 
 		if (parsed.tierConfig) {
 			$scope.tierConfig = parsed.tierConfig;
