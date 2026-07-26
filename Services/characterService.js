@@ -1,4 +1,4 @@
-mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilities', 'trueSkillService', function($rootScope, $interval, $http, Utilities, trueSkillService) {
+mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilities', 'openSkillService', function($rootScope, $interval, $http, Utilities, openSkillService) {
 	const service = this;
 
 	service.characters = [];
@@ -81,24 +81,20 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 	};
 
-	// --- TrueSkill Helper Hydration ---
+	// --- OpenSKill Helper Hydration ---
 	const OLD_ELO_BASELINE = 1200;
 
 	/**
-	 * Ensures a character object has valid TrueSkill properties (mu, sigma, tsRating, score)
+	 * Ensures a character object has valid OpenSkill properties (mu, sigma, osRating, score)
 	 * and performs legacy Elo migration if necessary.
 	 */
 	service._hydrateCharacter = (c) => {
-		// 1. MIGRATION: Convert legacy Elo -> TrueSkill
+		// 1. MIGRATION: Convert legacy Elo -> OpenSkill
 		if (typeof c.elo !== 'undefined' && typeof c.mu === 'undefined') {
 			c.mu = 25.0 + ((c.elo - OLD_ELO_BASELINE) / 40.0);
 			const matches = c.endlessMatches || c.totalMatches || ((c.wins || 0) + (c.losses || 0)) || 0;
 
-			if (matches === 0) {
-				c.sigma = 8.333;
-			} else {
-				c.sigma = 1.0 + (7.333 * Math.exp(-0.05 * matches));
-			}
+			c.sigma = matches === 0 ? 8.333 : (1.0 + (7.333 * Math.exp(-0.05 * matches)));
 			delete c.elo;
 		}
 
@@ -108,11 +104,11 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			c.sigma = 8.333;
 		}
 
-		// 3. HYDRATE TRUESKILL RATING OBJECT
-		c.tsRating = new window.tsTrueSkill.Rating(c.mu, c.sigma);
+		// 3. HYDRATE OPENSKILL RATING OBJECT
+		c.osRating = openSkillService.createCharacter(c)
 
 		// 4. CALCULATE DISPLAY CONSERVATIVE SCORE (mu - 3*sigma)
-		c.score = trueSkillService.getConservativeScore(c.tsRating);
+		c.score = openSkillService.getConservativeScore(c.osRating);
 
 		return c;
 	};
@@ -173,10 +169,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		// 3. Reverse engineer mu so the final conservative math precisely matches the UI drop position
 		movedChar.mu = targetScore + (3.0 * movedChar.sigma);
-		movedChar.tsRating = new window.tsTrueSkill.Rating(movedChar.mu, movedChar.sigma);
-		movedChar.score = trueSkillService.getConservativeScore(movedChar.tsRating);
+		movedChar.osRating = openSkillService.createCharacter(movedChar);
+		movedChar.score = openSkillService.getConservativeScore(movedChar.osRating);
 
-		// 4. CRITICAL: Cascade the new TrueSkill variables to all Follow-Me links!
+		// 4. CRITICAL: Cascade the new OpenSkill variables to all Follow-Me links!
 		service.reapplyLinks();
 
 		$rootScope.$broadcast('charactersUpdated');
@@ -188,14 +184,14 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 		if (character.skip) {
 			character.mu = service.getLowestMu() - 0.5;
-			character.tsRating = new window.tsTrueSkill.Rating(character.mu, character.sigma || 8.333);
-			character.score = trueSkillService.getConservativeScore(character.tsRating);
+			character.osRating = openSkillService.createCharacter(character);
+			character.score = openSkillService.getConservativeScore(character.osRating);
 		} else {
 			character.linkedTo = '';
 			if (character.sigma <= 0.001) {
 				character.sigma = 8.333;
-				character.tsRating = new window.tsTrueSkill.Rating(character.mu, character.sigma);
-				character.score = trueSkillService.getConservativeScore(character.tsRating);
+				character.osRating = openSkillService.createCharacter(character);
+				character.score = openSkillService.getConservativeScore(character.osRating);
         	}
 		}
 
@@ -373,10 +369,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const survivor = service.characters[survivorIndex];
 		const target = service.characters[targetIndex];
 
-		// Steal TrueSkill stats
+		// Steal OpenSkill stats
 		survivor.mu = target.mu;
 		survivor.sigma = target.sigma;
-		survivor.tsRating = target.tsRating;
+		survivor.osRating = target.osRating;
 		survivor.score = target.score;
 		survivor.placementMatchesLeft = target.placementMatchesLeft;
 		survivor.skip = target.skip;
@@ -455,7 +451,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 				char.sigma = 0.001;
 				cascadeOffset += 0.0001;
 
-				char.tsRating = new window.tsTrueSkill.Rating(char.mu, char.sigma);
+				char.osRating = openSkillService.createCharacter(char);
 				char.score = char.mu; // Since sigma is 0, score = mu
 			} else {
 				cascadeOffset = 0.0001;
@@ -530,10 +526,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 
 		placementState.target = placementState.queue.shift();
-		// TrueSkill typically requires ~5 matches to collapse the sigma (uncertainty) reliably
+		// OpenSkill typically requires ~5 matches to collapse the sigma (uncertainty) reliably
 		placementState.target.placementMatchesLeft = 5;
 
-		// Purge legacy phase trackers since TrueSkill handles the volatility naturally
+		// Purge legacy phase trackers since OpenSkill handles the volatility naturally
 		placementState.history.clear();
 
 		return service.nextPlacementMatch();
@@ -591,20 +587,20 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const winner = leftWon ? service.leftCompare : service.rightCompare;
 		const loser = leftWon ? service.rightCompare : service.leftCompare;
 
-		// Let the trueSkillService calculate the heavy Bayesian math
-		const [newWinnerRating, newLoserRating] = trueSkillService.calculateMatch(winner.tsRating, loser.tsRating);
+		// Let the openSkillService calculate the heavy Bayesian math
+		const [newWinnerRating, newLoserRating] = openSkillService.calculateMatch(winner.osRating, loser.osRating);
 
 		// Update Winner
-		winner.tsRating = newWinnerRating;
+		winner.osRating = newWinnerRating;
 		winner.mu = newWinnerRating.mu;
 		winner.sigma = newWinnerRating.sigma;
-		winner.score = trueSkillService.getConservativeScore(newWinnerRating);
+		winner.score = openSkillService.getConservativeScore(newWinnerRating);
 
 		// Update Loser
-		loser.tsRating = newLoserRating;
+		loser.osRating = newLoserRating;
 		loser.mu = newLoserRating.mu;
 		loser.sigma = newLoserRating.sigma;
-		loser.score = trueSkillService.getConservativeScore(newLoserRating);
+		loser.score = openSkillService.getConservativeScore(newLoserRating);
 
 		if (service.leftCompare && service.rightCompare) {
 			service._recordMatchup(service.leftCompare, service.rightCompare);
@@ -615,7 +611,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		// Record the opponent so we don't fight them again in this calibration block
 		placementState.history.add(service.rightCompare.originalName);
 
-		// Calculate and apply the updated TrueSkill ratings
+		// Calculate and apply the updated OpenSkill ratings
 		service._applyMatchResult(leftWon);
 
 		// Tick up the global play counts
@@ -680,8 +676,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 
 		candidates.sort((a, b) => {
-			const qualityA = trueSkillService.getMatchQuality(service.leftCompare.tsRating, a.tsRating);
-			const qualityB = trueSkillService.getMatchQuality(service.leftCompare.tsRating, b.tsRating);
+			const qualityA = openSkillService.getMatchQuality(service.leftCompare.osRating, a.osRating);
+			const qualityB = openSkillService.getMatchQuality(service.leftCompare.osRating, b.osRating);
 
 			// Match quality penalty combined with endlessMatches weighting
 			const weightA = (1.0 - qualityA) + (a.endlessMatches * 2.0);
@@ -697,7 +693,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	service.handleEndlessDecision = (leftWon) => {
-		// Calculate and apply the updated TrueSkill ratings
+		// Calculate and apply the updated OpenSkill ratings
 		service._applyMatchResult(leftWon);
 
 		// Tick up endless play counts
@@ -746,8 +742,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	service.executeSkip = (character) => {
 		character.skip = true;
 		character.mu = service.getLowestMu() - 0.5;
-		character.tsRating = new window.tsTrueSkill.Rating(character.mu, character.sigma || 8.333);
-		character.score = trueSkillService.getConservativeScore(character.tsRating);
+		character.osRating = openSkillService.createCharacter(character);
+		character.score = openSkillService.getConservativeScore(character.osRating);
 		service.reapplyLinks();
 		$rootScope.$broadcast('charactersUpdated');
 	};
@@ -863,7 +859,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	};
 
 	// --- General UI, Parser, & Lifecycles ---
-	service.startRankMode = () => {
+	service.startRankMode = (intensity = 'balanced') => {
 		const validChars = service.characters.filter(c => !c.skip);
 		if (validChars.length < 2) {
 			Utilities.showWarning("Not enough characters to run a ranking bracket.", true);
@@ -874,14 +870,18 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		service.mode = Mode.RankFinite;
 		service.lastRankMode = null;
 
-		// Reset Swiss tracking for a fresh tournament
 		validChars.forEach(c => c.swissMatches = 0);
 
-		// Calculate max rounds based on pool size.
-		// log2(N) gives the minimum rounds for a perfect bracket, +1 adds TrueSkill confidence buffer.
-		service._maxSwissRounds = Math.max(3, Math.ceil(Math.log2(validChars.length)) + 1);
+		// Calculate rounds based on selected intensity
+		const baseRounds = Math.ceil(Math.log2(validChars.length));
 
-		// Independent history tracker just for the active Swiss tournament
+		const intensityMap = {
+			quick: Math.max(2, baseRounds),
+			balanced: Math.max(3, baseRounds + 1),
+			thorough: Math.max(4, baseRounds + 3)
+		};
+
+		service._maxSwissRounds = intensityMap[intensity] || intensityMap.balanced;
 		service._swissHistory = new Set();
 
 		return service.nextRankMatch();
@@ -931,7 +931,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 			return false;
 		}
 
-		// Sort by TrueSkill conservative score to enforce Swiss pairing (winners play winners)
+		// Sort by OpenSkill conservative score to enforce Swiss pairing (winners play winners)
 		activePool.sort((a, b) => b.score - a.score);
 
 		// Pick the highest-ranking character who still needs a match
@@ -964,7 +964,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const sig = service._getMatchupSignature(service.leftCompare, service.rightCompare);
 		service._swissHistory.add(sig);
 
-		// Apply the unified TrueSkill math
+		// Apply the unified OpenSkill math
 		service._applyMatchResult(leftWon);
 
 		// Tick Swiss rounds
@@ -1096,8 +1096,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 				c.linkedTo = '';
 				if (c.sigma <= 0.001) {
 					c.sigma = 8.333;
-					c.tsRating = new window.tsTrueSkill.Rating(c.mu, c.sigma);
-					c.score = trueSkillService.getConservativeScore(c.tsRating);
+					c.osRating = openSkillService.createCharacter(c);
+					c.score = openSkillService.getConservativeScore(c.osRating);
 				}
 			}
 			updatedCount++;

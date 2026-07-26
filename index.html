@@ -15,25 +15,19 @@
 	<script src="https://code.jquery.com/jquery-3.4.1.js"></script>
 	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.8/angular.js"></script>
 	<script src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-message-box@3.1.0/dist/messagebox.min.js"></script>
+	<script type="module">
+		  import * as osOpenSkill from 'https://cdn.jsdelivr.net/npm/openskill@5/+esm';
+		  window.osOpenSkill = osOpenSkill;
+	</script>
 	<script src="DnD/Sortable.min.js"></script>
 	<script src="DnD/angular-legacy-sortable.js"></script>
-	<script type="module">
-		import { TrueSkill, Rating, rate_1vs1, quality_1vs1 } from 'https://cdn.jsdelivr.net/npm/ts-trueskill@5.1.0/+esm';
-
-		window.tsTrueSkill = {
-			TrueSkill,
-			Rating,
-			rate_1vs1,
-			quality_1vs1
-		};
-	</script>
 
 	<script src="Apps/mudaeRanker.js"></script>
 	<script src="Controllers/mudaeRankerController.js"></script>
 
 	<script src="Services/characterService.js"></script>
 	<script src="Services/utilityService.js"></script>
-	<script src="Services/trueSkillService.js"></script>
+	<script src="Services/openSkillService.js"></script>
 
 	<script src="Directives/mudrBody.js"></script>
 	<script src="Directives/mudrCardClick.js"></script>

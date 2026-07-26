@@ -16,7 +16,7 @@ mudaeRanker.controller('mudaeRankerController', ['$scope', '$http', '$timeout', 
 			const left = target ? target.placementMatchesLeft : 0;
 			return `Calibration Phase: ${left} match(es) remaining`;
 		} else if (Characters.mode === Characters.Modes.RankFinite) {
-			// --- TrueSkill Swiss Bracket Progress ---
+			// --- OpenSkill Swiss Bracket Progress ---
 			const leftChar = Characters.getLeftCompare();
 			if (!leftChar) return "Calculating bracket...";
 
