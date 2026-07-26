@@ -632,8 +632,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 	// --- Endless Rank Engine ---
 	service.startEndlessRank = () => {
-		if (service.getRankingInProgress() && service.mode !== Mode.Endless) {
-			Utilities.showWarning("A calibration session is active. Please pause/finish it before entering Endless Rank.", true);
+		if (service.mode !== Mode.Edit && service.mode !== Mode.Endless) {
+			Utilities.showWarning("A ranking session is active. Please pause/finish it before entering Endless Rank.", true);
 			return false;
 		}
 

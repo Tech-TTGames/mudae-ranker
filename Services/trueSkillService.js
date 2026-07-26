@@ -6,17 +6,13 @@ mudaeRanker.factory('trueSkillService', ['$window', function($window) {
         console.error("ts-trueskill failed to load from CDN. Check network tab.");
     }
 
-    // 2. Initialize the TrueSkill environment
-    // This configures the default math parameters (mu = 25, sigma = 8.333)
-    const tsenv = new ts.TrueSkill();
-
     return {
         /**
          * Creates a new character rating with default mu and sigma
          * @returns {Rating} A TrueSkill Rating object
          */
         createCharacter: function() {
-            return new tsenv.Rating();
+            return new ts.Rating();
         },
 
         /**
@@ -27,7 +23,7 @@ mudaeRanker.factory('trueSkillService', ['$window', function($window) {
          */
         calculateMatch: function(winner, loser) {
             // rate_1vs1 takes (winner, loser) and returns updated Rating objects
-            return tsenv.rate_1vs1(winner, loser);
+            return ts.rate_1vs1(winner, loser);
         },
 
         /**
@@ -39,7 +35,7 @@ mudaeRanker.factory('trueSkillService', ['$window', function($window) {
          * @returns {Number} Probability of a draw (0.0 to 1.0)
          */
         getMatchQuality: function(charA, charB) {
-            return tsenv.quality_1vs1(charA, charB);
+            return ts.quality_1vs1(charA, charB);
         },
 
         /**
