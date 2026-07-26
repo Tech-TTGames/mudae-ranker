@@ -4,7 +4,7 @@ mudaeRanker.directive('mudrCardClick', ['Characters', function(Characters) {
 		scope: false,
 		link: function(scope, element, attrs) {
 			element.on('click', function(event) {
-				Characters.clickCard(element, scope.$index);
+				Characters.clickCard(element, scope.c);
 				scope.$apply();
 				event.stopPropagation();
 			});

@@ -225,8 +225,13 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		}
 	};
 
-	service.clickCard = (element, index) => {
-		if (service.mode === Mode.Edit && index !== service.activeIndex) {
+	service.clickCard = (element, characterOrIndex) => {
+		if (service.mode !== Mode.Edit) return;
+
+		let index = (typeof characterOrIndex === 'number') ? characterOrIndex : service.characters.indexOf(characterOrIndex);
+		if (index < 0 || index >= service.characters.length) return;
+
+		if (index !== service.activeIndex) {
 			service.minimizeActiveCard(true);
 			service.disableSortable();
 			service.characters[index].className += ' CharacterFull';
