@@ -1300,6 +1300,10 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		initialText = initialText.replace(/(.*) (- | +)\d+\/\d+/g, '$$$1');
 		const initialSeriesArray = initialText.split('$').slice(1);
 		const seriesArray = [];
+    const shouldSeedRanks = !hasSeriesHeaders && !mergeCharacters;
+    const totalCharactersToImport = rawLines.length;
+    let globalImportIndex = 0;
+
 
 		initialSeriesArray.forEach(seriesChunk => {
 			const seriesData = seriesChunk.trim().split('\n');
@@ -1329,6 +1333,8 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 
 				const originalName = nameAndNotePart;
 				const characterName = originalName.replace(/(?: \([A-Z]+\))?/gi, '').trim();
+        const rankOffset = shouldSeedRanks ? (totalCharactersToImport - globalImportIndex) * 0.05 : 0;
+        const startingSigma = shouldSeedRanks ? 7.0 : 8.333;
 
 				let character = {
 					className: 'CharacterThumb',
@@ -1341,7 +1347,9 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 					skip: false,
 					linkedTo: '',
 					flag: false,
-					placementMatchesLeft: 0
+					placementMatchesLeft: 0,
+          mu: 25.0 + rankOffset,
+          sigma: startingSigma,
 				};
 
 				character = service._hydrateCharacter(character);
