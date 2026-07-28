@@ -89,6 +89,13 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 	 * and performs legacy Elo migration if necessary.
 	 */
 	service._hydrateCharacter = (c) => {
+    // 0. ENSURE BASE CSS CLASS EXISTS
+    if (!c.className || typeof c.className !== 'string' || !c.className.includes('CharacterThumb')) {
+        c.className = 'CharacterThumb';
+    } else {
+        // Strip any lingering full/expanded state from imports
+        c.className = c.className.replace(/ ?CharacterFull( )?/, '').trim();
+    }
 		// 1. MIGRATION: Convert legacy Elo -> OpenSkill
 		if (typeof c.elo !== 'undefined' && typeof c.mu === 'undefined') {
 			c.mu = 25.0 + ((c.elo - OLD_ELO_BASELINE) / 40.0);
@@ -282,9 +289,6 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		service.characters.length = 0;
 
 		const processedCharacters = newCharacters.map((c) => {
-			if (c.className) {
-				c.className = c.className.replace(/ ?CharacterFull( )?/, '');
-			}
 			if (typeof c.placementMatchesLeft === 'undefined') {
 				c.placementMatchesLeft = 0;
 			}
