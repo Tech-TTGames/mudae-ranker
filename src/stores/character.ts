@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { rating, ordinal } from 'openskill'
-import type { Character } from '../types/character'
-import type { TierConfig } from '../types/app'
+import type { Character } from '@/types/character'
+import type { TierConfig } from '@/types/app'
 
 export const useCharacterStore = defineStore('characters', () => {
   // --- State ---
