@@ -4,7 +4,7 @@ import { rate, rating, ordinal, predictDraw } from 'openskill'
 import { bradleyTerryFull } from 'openskill/models'
 import { useCharacterStore } from './character'
 import type { Character } from '@/types/character'
-import { AppMode } from '@/types/app.ts'
+import { AppMode } from '@/types/app'
 
 export interface PlacementState {
   active: boolean

@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
+import { onMounted } from 'vue'
+import { useAppBoot } from '@/composables/setup'
+
+const { bootApplication } = useAppBoot()
+
+onMounted(() => {
+  bootApplication()
+})
 </script>
 
 <template>
-  <main>
-    <RouterView />
-  </main>
+  <router-view />
 </template>
