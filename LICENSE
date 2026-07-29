@@ -22,5 +22,5 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 Note: Code files are covered by the MIT terms above. The project's branding and
-graphical design assets are located in the .\assets directory and are governed
+graphical design assets are located in the .\public directory and are governed
 by the separate LICENSE file contained within said directory.

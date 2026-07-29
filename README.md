@@ -73,4 +73,4 @@ This project has evolved across multiple iterations:
 * **Intermediate Updates:** [LieutenantCrunch](https://github.com/LieutenantCrunch/mudae-ranker)
 * **Current Version:** [Tech-TTGames](https://github.com/Tech-TTGames/mudae-ranker) — Bunch of updates and rework with Vue.
 
-*Note: Code files are covered by the MIT terms above. The project's branding and graphical design assets are located in the .\Assets directory and are governed by the separate LICENSE file contained within said directory.*
+*Note: Code files are covered by the MIT terms above. The project's branding and graphical design assets are located in the .\public directory and are governed by the separate LICENSE file contained within said directory.*
