@@ -1,4 +1,4 @@
-import type { Character } from 'character'
+import type { Character } from './character'
 
 export enum AppMode {
   Edit = 0,

@@ -21,8 +21,8 @@ export const useCharacterStore = defineStore('characters', () => {
 
   // Determines the target list for bulk actions based on legacy behavior
   const bulkActionTargetList = computed(() =>
-    flaggedCharacters.value.length > 0 ? flaggedCharacters.value : characters.value
-  );
+    flaggedCharacters.value.length > 0 ? flaggedCharacters.value : characters.value,
+  )
 
   // --- Actions: Sorting & Deletion ---
 
@@ -47,7 +47,8 @@ export const useCharacterStore = defineStore('characters', () => {
   function massDeleteFlagged() {
     // Iterating backwards prevents index shifting issues during deletion
     for (let i = characters.value.length - 1; i >= 0; i--) {
-      if (characters.value[i].flag) {
+      const char = characters.value[i]
+      if (char?.flag) {
         characters.value.splice(i, 1)
       }
     }
@@ -81,7 +82,7 @@ export const useCharacterStore = defineStore('characters', () => {
     })
 
     // Trigger cascade link rebuild (To be implemented in Step 1.3)
-    reapplyLinks();
+    reapplyLinks()
 
     return updatedCount
   }
@@ -120,7 +121,7 @@ export const useCharacterStore = defineStore('characters', () => {
     })
 
     // Trigger cascade link rebuild (To be implemented in Step 1.3)
-    reapplyLinks();
+    reapplyLinks()
 
     return updatedCount
   }
@@ -160,6 +161,8 @@ export const useCharacterStore = defineStore('characters', () => {
 
     const survivor = characters.value[activeIndex]
     const target = characters.value[targetIndex]
+
+    if (!survivor || !target) return
 
     // Steal OpenSkill stats
     survivor.mu = target.mu
@@ -280,7 +283,7 @@ export const useCharacterStore = defineStore('characters', () => {
 
     // 5. Clean up orphans (linked to a character that doesn't exist)
     Object.keys(linkMap).forEach((key) => {
-      linkMap[key].forEach((char) => trulyDiscarded.push(char))
+      linkMap[key]?.forEach((char) => trulyDiscarded.push(char))
     })
 
     finalArray.push(...trulyDiscarded)
@@ -291,38 +294,39 @@ export const useCharacterStore = defineStore('characters', () => {
   }
 
   function applyDragAndDropSort(oldIndex: number, newIndex: number) {
-    if (oldIndex === newIndex) return;
+    if (oldIndex === newIndex) return
 
-    const movedChar = characters.value[newIndex];
-    const prevChar = newIndex > 0 ? characters.value[newIndex - 1] : null;
-    const nextChar = newIndex < characters.value.length - 1 ? characters.value[newIndex + 1] : null;
+    const movedChar = characters.value[newIndex]
+    if (!movedChar) return
+    const prevChar = newIndex > 0 ? characters.value[newIndex - 1] : null
+    const nextChar = newIndex < characters.value.length - 1 ? characters.value[newIndex + 1] : null
 
-    let targetScore = 25.0; // Failsafe for an empty array, though technically impossible here
+    let targetScore = 25.0 // Failsafe for an empty array, though technically impossible here
 
     // 1. Determine target score based on boundary vs. inline drop
     if (prevChar && nextChar) {
-        // Dropped in the middle: exact average of the two neighbors
-        targetScore = (prevChar.score + nextChar.score) / 2.0;
+      // Dropped in the middle: exact average of the two neighbors
+      targetScore = (prevChar.score + nextChar.score) / 2.0
     } else if (nextChar) {
-        // Dropped at the absolute top: barely edge out the former #1
-        targetScore = nextChar.score + 0.1;
+      // Dropped at the absolute top: barely edge out the former #1
+      targetScore = nextChar.score + 0.1
     } else if (prevChar) {
-        // Dropped at the absolute bottom: barely fall behind the former last place
-        targetScore = prevChar.score - 0.1;
+      // Dropped at the absolute bottom: barely fall behind the former last place
+      targetScore = prevChar.score - 0.1
     }
 
     // 2. Barely penalize sigma to prevent the score from crashing
-    movedChar.sigma = Math.min(8.333, (movedChar.sigma || 4.0) + 0.1);
+    movedChar.sigma = Math.min(8.333, (movedChar.sigma || 4.0) + 0.1)
 
     // 3. Reverse engineer mu so the final conservative math precisely matches the UI drop position
-    movedChar.mu = targetScore + (3.0 * movedChar.sigma);
+    movedChar.mu = targetScore + 3.0 * movedChar.sigma
 
     // 4. Hydrate the OpenSkill object and display score
-    movedChar.osRating = rating({ mu: movedChar.mu, sigma: movedChar.sigma });
-    movedChar.score = ordinal(movedChar.osRating);
+    movedChar.osRating = rating({ mu: movedChar.mu, sigma: movedChar.sigma })
+    movedChar.score = ordinal(movedChar.osRating)
 
-    reapplyLinks();
-}
+    reapplyLinks()
+  }
 
   return {
     characters,

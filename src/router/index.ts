@@ -7,9 +7,9 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: App // Temporary placeholder
-    }
-  ]
+      component: App, // Temporary placeholder
+    },
+  ],
 })
 
 export default router
