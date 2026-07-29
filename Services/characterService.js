@@ -1301,6 +1301,7 @@ mudaeRanker.service('Characters', ['$rootScope', '$interval', '$http', 'Utilitie
 		const initialSeriesArray = initialText.split('$').slice(1);
 		const seriesArray = [];
     const shouldSeedRanks = !hasSeriesHeaders && !mergeCharacters;
+    const rawLines = initialText.split('\n').filter(line => line.trim() !== '' && !line.startsWith('$'));
     const totalCharactersToImport = rawLines.length;
     let globalImportIndex = 0;
 
