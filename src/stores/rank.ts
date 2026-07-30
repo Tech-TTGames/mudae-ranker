@@ -70,7 +70,84 @@ export const useRankStore = defineStore('rank', () => {
     }
   }
 
+  // --- Actions: Undo Engine ---
+  function undoRank() {
+    if (undoStack.value.length === 0) return false
+
+    const lastMatch = undoStack.value.pop()
+    if (!lastMatch) return false
+
+    const char1 = characterStore.characters.find((c) => c.id === lastMatch.char1Id)
+    const char2 = characterStore.characters.find((c) => c.id === lastMatch.char2Id)
+
+    if (char1 && char2) {
+      // 1. Revert OpenSkill Stats
+      char1.mu = lastMatch.char1OldStats.mu
+      char1.sigma = lastMatch.char1OldStats.sigma
+      char1.score = lastMatch.char1OldStats.score
+      char1.osRating = rating({ mu: char1.mu, sigma: char1.sigma })
+
+      char2.mu = lastMatch.char2OldStats.mu
+      char2.sigma = lastMatch.char2OldStats.sigma
+      char2.score = lastMatch.char2OldStats.score
+      char2.osRating = rating({ mu: char2.mu, sigma: char2.sigma })
+
+      // 2. Revert Global Play Counts
+      if (char1.totalMatches) char1.totalMatches--
+      if (char2.totalMatches) char2.totalMatches--
+
+      // 3. Revert Mode-Specific Play Counts & Histories
+      if (mode.value === AppMode.Placement) {
+        if (placementState.value.target) placementState.value.target.placementMatchesLeft++
+      } else if (mode.value === AppMode.RankFinite) {
+        if (char1.swissMatches) char1.swissMatches--
+        if (char2.swissMatches) char2.swissMatches--
+        // Remove the signature so they can legally fight again
+        swissHistory.value.delete(getMatchupSignature(char1, char2))
+      } else if (mode.value === AppMode.Endless) {
+        if (char1.endlessMatches) char1.endlessMatches--
+        if (char2.endlessMatches) char2.endlessMatches--
+      }
+
+      // Pop the most recent global matchup memory
+      recentMatchups.value.pop()
+
+      // 4. Force the UI to display the reverted matchup
+      currentMatch.value = [char1, char2]
+
+      // Resort in case the reverted score shuffled their rank
+      characterStore.sortArrayByScore()
+      return true
+    }
+
+    return false
+  }
+
   // --- Actions: Placement Engine ---
+  function massInsert() {
+    // Uses bulkActionTargetList (flagged characters if any exist, otherwise all characters)
+    const targets = characterStore.bulkActionTargetList
+
+    if (targets.length === 0) return false
+
+    targets.forEach((c) => {
+      c.skip = false
+      c.linkedTo = ''
+      c.placementMatchesLeft = 5
+
+      // Reset sigma to 8.333 baseline if collapsed so OpenSkill can calibrate them again
+      if (c.sigma <= 0.001) {
+        c.sigma = 8.333
+        c.osRating = rating({ mu: c.mu, sigma: c.sigma })
+        c.score = ordinal(c.osRating)
+      }
+    })
+
+    // Re-link cascading followers and pass unskipped targets to placement match queue
+    characterStore.reapplyLinks()
+    return startPlacementMatches(targets.filter((c) => !c.skip))
+  }
+
   function startPlacementMatches(queueToInsert: Character[]) {
     if (!queueToInsert || queueToInsert.length === 0) return false
 
@@ -383,6 +460,9 @@ export const useRankStore = defineStore('rank', () => {
     hasActiveMatch,
     canUndo,
     isRankingInProgress,
+    maxSwissRounds,
+    undoStack,
+    undoRank,
     startPlacementMatches,
     startRankMode,
     startEndlessRank,
@@ -390,5 +470,6 @@ export const useRankStore = defineStore('rank', () => {
     pauseRankMode,
     resumeRankMode,
     skipParticipant,
+    massInsert,
   }
 })

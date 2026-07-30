@@ -5,9 +5,15 @@ import { useCharacterStore } from '@/stores/character'
 import { useRankStore } from '@/stores/rank'
 import { useAlerts } from '@/composables/alerts'
 
-const props = defineProps<{
-  character: Character
-}>()
+const props = withDefaults(
+  defineProps<{
+    character: Character
+    readonly?: boolean
+  }>(),
+  {
+    readonly: false,
+  },
+)
 
 const characterStore = useCharacterStore()
 const rankStore = useRankStore()
@@ -17,6 +23,7 @@ const isExpanded = ref(false)
 const showAdvancedEdit = ref(false)
 
 const openCard = () => {
+  if (props.readonly) return
   isExpanded.value = true
 }
 
@@ -25,7 +32,6 @@ const closeCard = () => {
   showAdvancedEdit.value = false
 }
 
-// Safely mutate the store reference directly to bypass vue/no-mutating-props
 const updateStringField = (event: Event, field: 'name' | 'series' | 'note' | 'imageUrl') => {
   const target = event.target as HTMLInputElement
   const storeChar = characterStore.characters.find((c) => c.id === props.character.id)
@@ -67,10 +73,9 @@ const handleDelete = async () => {
 </script>
 
 <template>
-  <!-- 1. THE GRID THUMBNAIL -->
   <div class="character-card-thumb" :class="{ 'is-skipped': character.skip }" @click="openCard">
     <div class="image-wrapper">
-      <img :src="character.imageUrl" :alt="character.name" draggable="false" />
+      <img :src="character.imageUrl" :alt="character.name" draggable="false" @dragstart.prevent />
       <div class="info-overlay">
         <span class="name">{{ character.name }}</span>
       </div>
@@ -78,113 +83,110 @@ const handleDelete = async () => {
     <div v-if="character.note" class="note-badge">
       {{ character.note }}
     </div>
-  </div>
 
-  <!-- 2. THE EXPANDED CENTERED MODAL -->
-  <Teleport to="body">
-    <Transition name="fade">
-      <div v-if="isExpanded" class="expanded-backdrop" @click="closeCard">
-        <!-- Expanded Card Container -->
-        <div class="expanded-card" @click.stop>
-          <!-- Close Button -->
-          <button class="btn-close" @click="closeCard">✖</button>
+    <!-- Teleport nested inside root element -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="isExpanded" class="expanded-backdrop" @click.stop="closeCard">
+          <div class="expanded-card" @click.stop>
+            <button class="btn-close" @click="closeCard">✖</button>
 
-          <!-- Large Visual -->
-          <div class="expanded-visual">
-            <img :src="character.imageUrl" :alt="character.name" draggable="false" />
-            <div class="info-overlay">
-              <span class="name">{{ character.name }}</span>
-              <span class="series">{{ character.series }}</span>
-            </div>
-          </div>
-
-          <!-- Edit Controls Panel -->
-          <div class="expanded-panel">
-            <div class="input-group">
-              <input
-                type="text"
-                class="card-text-input"
-                :value="character.note"
-                @change="(e) => updateStringField(e, 'note')"
-                placeholder="Add a custom note..."
+            <div class="expanded-visual">
+              <img
+                :src="character.imageUrl"
+                :alt="character.name"
+                draggable="false"
+                @dragstart.prevent
               />
+              <div class="info-overlay">
+                <span class="name">{{ character.name }}</span>
+                <span class="series">{{ character.series }}</span>
+              </div>
             </div>
 
-            <div class="action-grid">
+            <div class="expanded-panel">
+              <div class="input-group">
+                <input
+                  type="text"
+                  class="card-text-input"
+                  :value="character.note"
+                  @change="(e) => updateStringField(e, 'note')"
+                  placeholder="Add a custom note..."
+                />
+              </div>
+
+              <div class="action-grid">
+                <button
+                  class="btn-action"
+                  :class="{ 'is-flagged': character.flag }"
+                  @click="toggleFlag"
+                >
+                  {{ character.flag ? '🚩 Flagged' : '🏳️ Flag' }}
+                </button>
+                <button class="btn-action btn-insert" @click="handleInsert">⚡ Insert</button>
+              </div>
+
+              <button class="btn-action btn-merge" @click="handleMergeRight">➡️ Merge Right</button>
+
               <button
-                class="btn-action"
-                :class="{ 'is-flagged': character.flag }"
-                @click="toggleFlag"
+                class="btn-action btn-edit-toggle"
+                @click="showAdvancedEdit = !showAdvancedEdit"
               >
-                {{ character.flag ? '🚩 Flagged' : '🏳️ Flag' }}
+                {{ showAdvancedEdit ? '▴ Hide Edit Details' : '▾ Edit Details' }}
               </button>
-              <button class="btn-action btn-insert" @click="handleInsert">⚡ Insert</button>
-            </div>
 
-            <button class="btn-action btn-merge" @click="handleMergeRight">➡️ Merge Right</button>
-
-            <!-- Advanced Edit Toggle -->
-            <button
-              class="btn-action btn-edit-toggle"
-              @click="showAdvancedEdit = !showAdvancedEdit"
-            >
-              {{ showAdvancedEdit ? '▴ Hide Edit Details' : '▾ Edit Details' }}
-            </button>
-
-            <!-- Advanced Edit Accordion -->
-            <div v-if="showAdvancedEdit" class="advanced-edit-fields">
-              <div class="input-group">
-                <label class="small-label">Name:</label>
-                <input
-                  type="text"
-                  class="card-text-input"
-                  :value="character.name"
-                  @change="(e) => updateStringField(e, 'name')"
-                />
+              <div v-if="showAdvancedEdit" class="advanced-edit-fields">
+                <div class="input-group">
+                  <label class="small-label">Name:</label>
+                  <input
+                    type="text"
+                    class="card-text-input"
+                    :value="character.name"
+                    @change="(e) => updateStringField(e, 'name')"
+                  />
+                </div>
+                <div class="input-group">
+                  <label class="small-label">Series:</label>
+                  <input
+                    type="text"
+                    class="card-text-input"
+                    :value="character.series"
+                    @change="(e) => updateStringField(e, 'series')"
+                  />
+                </div>
+                <div class="input-group">
+                  <label class="small-label">Image URL:</label>
+                  <input
+                    type="text"
+                    class="card-text-input"
+                    :value="character.imageUrl"
+                    @change="(e) => updateStringField(e, 'imageUrl')"
+                  />
+                </div>
               </div>
-              <div class="input-group">
-                <label class="small-label">Series:</label>
-                <input
-                  type="text"
-                  class="card-text-input"
-                  :value="character.series"
-                  @change="(e) => updateStringField(e, 'series')"
-                />
-              </div>
-              <div class="input-group">
-                <label class="small-label">Image URL:</label>
-                <input
-                  type="text"
-                  class="card-text-input"
-                  :value="character.imageUrl"
-                  @change="(e) => updateStringField(e, 'imageUrl')"
-                />
-              </div>
-            </div>
 
-            <div class="danger-zone">
-              <button class="btn-action text-danger" @click="handleDelete">🗑️ Delete</button>
+              <div class="danger-zone">
+                <button class="btn-action text-danger" @click="handleDelete">🗑️ Delete</button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </Transition>
-  </Teleport>
+      </Transition>
+    </Teleport>
+  </div>
 </template>
 
 <style scoped>
-/* =========================================
-   1. GRID THUMBNAIL (Standard Size)
-   ========================================= */
 .character-card-thumb {
   position: relative;
-  width: 110px; /* Matches legacy visual scale */
+  width: 110px;
   background-color: #2b2d31;
   border: 1px solid #1e1f22;
   border-radius: 6px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
   cursor: grab;
   user-select: none;
+  -webkit-user-select: none;
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
@@ -218,6 +220,9 @@ const handleDelete = async () => {
   height: 100%;
   object-fit: cover;
   pointer-events: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+  user-select: none;
   display: block;
 }
 
@@ -269,9 +274,6 @@ const handleDelete = async () => {
   text-overflow: ellipsis;
 }
 
-/* =========================================
-   2. EXPANDED CENTERED MODAL
-   ========================================= */
 .expanded-backdrop {
   position: fixed;
   top: 0;
@@ -288,7 +290,7 @@ const handleDelete = async () => {
 
 .expanded-card {
   position: relative;
-  width: 260px; /* Larger than thumbnail for easy reading */
+  width: 260px;
   background-color: #2b2d31;
   border: 1px solid #4e5058;
   border-radius: 8px;
@@ -340,7 +342,6 @@ const handleDelete = async () => {
   gap: 8px;
 }
 
-/* Transitions */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.2s ease;
@@ -350,7 +351,6 @@ const handleDelete = async () => {
   opacity: 0;
 }
 
-/* Reused UI Elements */
 .input-group {
   display: flex;
   flex-direction: column;

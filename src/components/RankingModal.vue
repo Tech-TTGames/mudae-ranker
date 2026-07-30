@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, computed, ref } from 'vue'
 import { useRankStore } from '@/stores/rank'
+import { useCharacterStore } from '@/stores/character'
+import { AppMode } from '@/types/app'
 import CharacterCard from './CharacterCard.vue'
 
 const rankStore = useRankStore()
+const characterStore = useCharacterStore()
 
 // Track choice animations ('left', 'right', 'skip-left', 'skip-right')
 const animatingChoice = ref<string | null>(null)
@@ -12,6 +15,36 @@ const animatingChoice = ref<string | null>(null)
 const leftChar = computed(() => rankStore.currentMatch[0])
 const rightChar = computed(() => rankStore.currentMatch[1])
 
+// --- Dynamic Progress Text ---
+const rankProgressText = computed(() => {
+  if (rankStore.mode === AppMode.Endless) {
+    return '∞ Endless Mode'
+  }
+
+  if (rankStore.mode === AppMode.Placement) {
+    const left = leftChar.value ? leftChar.value.placementMatchesLeft : 0
+    return `Calibration Phase: ${left} match(es) remaining`
+  }
+
+  if (rankStore.mode === AppMode.RankFinite) {
+    if (!leftChar.value) return 'Calculating bracket...'
+
+    const currentRound = (leftChar.value.swissMatches || 0) + 1
+    const maxRounds = rankStore.maxSwissRounds || 3
+
+    const activeChars = characterStore.unskippedCharacters
+    const totalMatchesNeeded = Math.ceil((activeChars.length * maxRounds) / 2)
+
+    const currentMatchesPlayed = Math.floor(
+      activeChars.reduce((sum, c) => sum + (c.swissMatches || 0), 0) / 2,
+    )
+
+    return `Swiss Bracket: Match ${currentMatchesPlayed + 1} / ${totalMatchesNeeded} (Round ${currentRound}/${maxRounds})`
+  }
+
+  return ''
+})
+
 // --- Match Resolution Wrappers ---
 const chooseWinner = (winner: 'left' | 'right') => {
   if (animatingChoice.value) return
@@ -19,7 +52,6 @@ const chooseWinner = (winner: 'left' | 'right') => {
   animatingChoice.value = winner
 
   setTimeout(() => {
-    // 0 = Left Wins, 1 = Right Wins
     if (winner === 'left') rankStore.resolveMatch(0)
     else if (winner === 'right') rankStore.resolveMatch(1)
 
@@ -33,17 +65,28 @@ const skipCharacter = (side: 'left' | 'right') => {
   animatingChoice.value = `skip-${side}`
 
   setTimeout(() => {
-    // Pass the index to our new store action
     rankStore.skipParticipant(side === 'left' ? 0 : 1)
     animatingChoice.value = null
   }, 200)
 }
 
+const triggerUndo = () => {
+  if (rankStore.canUndo) {
+    rankStore.undoRank()
+  }
+}
+
 // --- Keyboard Event Handler ---
 const handleKeyDown = (event: KeyboardEvent) => {
   const target = event.target as HTMLElement | null
-  // Safely check if target exists and is an input element before ignoring keystrokes
   if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return
+
+  // Trap Ctrl+Z for Undo
+  if (event.ctrlKey && event.key === 'z') {
+    event.preventDefault()
+    triggerUndo()
+    return
+  }
 
   switch (event.key) {
     case 'ArrowLeft':
@@ -96,11 +139,15 @@ onUnmounted(() => {
       <div v-if="rankStore.isRankingInProgress" class="ranking-modal-overlay">
         <div class="modal-header">
           <div class="rank-stats">
-            <span
-              >Matches Completed: <strong>{{ rankStore.undoStack.length }}</strong></span
-            >
+            <span>Which one is better?</span>
+            <span class="progress-text">{{ rankProgressText }}</span>
           </div>
-          <button class="close-btn" @click="rankStore.pauseRankMode">✕ Pause</button>
+          <div class="header-controls">
+            <button class="undo-btn" :disabled="!rankStore.canUndo" @click="triggerUndo">
+              ⮌ Undo
+            </button>
+            <button class="close-btn" @click="rankStore.pauseRankMode">✕</button>
+          </div>
         </div>
 
         <div v-if="leftChar && rightChar" class="vs-container">
@@ -112,9 +159,9 @@ onUnmounted(() => {
               'chosen-loser': animatingChoice === 'right',
               skipped: animatingChoice === 'skip-left',
             }"
-            @click="chooseWinner('left')"
+            @click.stop="chooseWinner('left')"
           >
-            <CharacterCard :character="leftChar" :is-interactive="false" />
+            <CharacterCard :character="leftChar" :readonly="true" />
             <div class="slot-action-label"><span class="key-hint">← / A</span> Select</div>
             <button class="skip-btn" @click.stop="skipCharacter('left')">
               <span class="key-hint">↑ / W</span> Skip Left
@@ -134,9 +181,9 @@ onUnmounted(() => {
               'chosen-loser': animatingChoice === 'left',
               skipped: animatingChoice === 'skip-right',
             }"
-            @click="chooseWinner('right')"
+            @click.stop="chooseWinner('right')"
           >
-            <CharacterCard :character="rightChar" :is-interactive="false" />
+            <CharacterCard :character="rightChar" :readonly="true" />
             <div class="slot-action-label"><span class="key-hint">D / →</span> Select</div>
             <button class="skip-btn" @click.stop="skipCharacter('right')">
               <span class="key-hint">↓ / S</span> Skip Right
@@ -148,7 +195,7 @@ onUnmounted(() => {
           <p>
             Shortcuts: <strong>←/A</strong> Pick Left | <strong>→/D</strong> Pick Right |
             <strong>↑/W</strong> Skip Left | <strong>↓/S</strong> Skip Right |
-            <strong>Esc</strong> Pause
+            <strong>Ctrl+Z</strong> Undo | <strong>Esc</strong> Pause
           </p>
         </div>
       </div>
@@ -157,6 +204,23 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.matchup-slot :deep(.character-card-thumb) {
+  width: 240px !important; /* Scaled up from standard 110px */
+  border-radius: 10px;
+  border-width: 2px;
+  pointer-events: none; /* Prevents card internal click handlers from firing */
+}
+
+.matchup-slot :deep(.name) {
+  font-size: 1.1rem;
+  padding: 6px 4px;
+}
+
+.matchup-slot :deep(.note-badge) {
+  font-size: 0.85rem;
+  padding: 4px 8px;
+}
+
 .ranking-modal-overlay {
   position: fixed;
   top: 0;
@@ -178,6 +242,46 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   color: #f2f3f5;
+}
+
+.rank-stats {
+  display: flex;
+  flex-direction: column;
+}
+
+.rank-stats span:first-child {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.progress-text {
+  font-size: 14px;
+  color: #949ba4;
+}
+
+.header-controls {
+  display: flex;
+  gap: 12px;
+}
+
+.undo-btn {
+  background: #4e5058;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.undo-btn:hover:not(:disabled) {
+  background: #6d6f78;
+}
+
+.undo-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .close-btn {

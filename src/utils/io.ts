@@ -7,7 +7,10 @@ import { AppMode } from '@/types/app'
  * PARSE & IMPORT
  * Parses JSON into an AppSavePayload or Character[], or cleans raw Mudae Discord text into Characters.
  */
-export function parseImportData(rawData: string): Partial<AppSavePayload> | Character[] {
+export function parseImportData(
+  rawData: string,
+  isMerge = false,
+): Partial<AppSavePayload> | Character[] {
   // 1. Attempt JSON Parse First
   try {
     const parsed = JSON.parse(rawData)
@@ -40,6 +43,14 @@ export function parseImportData(rawData: string): Partial<AppSavePayload> | Char
   initialText = initialText.replace(/(.*) (- | +)\d+\/\d+/g, '$$$1')
   const seriesArray = initialText.split('$').slice(1)
 
+  // Order Preservation Tracking
+  const shouldSeedRanks = !hasSeriesHeaders && !isMerge
+  const rawLines = initialText
+    .split('\n')
+    .filter((line) => line.trim() !== '' && !line.startsWith('$'))
+  const totalCharactersToImport = rawLines.length
+  let globalImportIndex = 0
+
   const extractedCharacters: Character[] = []
 
   seriesArray.forEach((seriesChunk) => {
@@ -68,7 +79,15 @@ export function parseImportData(rawData: string): Partial<AppSavePayload> | Char
 
       const originalName = nameAndNotePart
       const characterName = originalName.replace(/(?: \([A-Z]+\))?/gi, '').trim()
-      const defaultRating = rating()
+
+      // Calculate OpenSkill seed values to preserve list sequence
+      const rankOffset = shouldSeedRanks ? (totalCharactersToImport - globalImportIndex) * 0.05 : 0
+      const startingSigma = shouldSeedRanks ? 7.0 : 8.333
+      const startingMu = 25.0 + rankOffset
+
+      globalImportIndex++
+
+      const defaultRating = rating({ mu: startingMu, sigma: startingSigma })
 
       extractedCharacters.push({
         id: crypto.randomUUID(),
@@ -84,8 +103,8 @@ export function parseImportData(rawData: string): Partial<AppSavePayload> | Char
         totalMatches: 0,
         endlessMatches: 0,
         placementMatchesLeft: 5,
-        mu: 25.0,
-        sigma: 8.333,
+        mu: startingMu,
+        sigma: startingSigma,
         score: ordinal(defaultRating),
         osRating: defaultRating,
       })
@@ -150,4 +169,106 @@ export function exportFullAppStateToJson(
   }
 
   downloadJsonFile(exportData, filename)
+}
+
+/**
+ * MUDAE EXPORT: SORT COMMAND ($smp)
+ * Generates the paginated $smp strings based on Discord's 2000-character limit.
+ */
+export function generateExportSortCommand(targetList: Character[], hasFlagged: boolean): string {
+  const total = targetList.length
+
+  if (total === 0) throw new Error('No characters available to export.')
+
+  const firstChar = targetList[0]
+  if (!firstChar || firstChar.originalName === undefined) {
+    throw new Error("Looks like your characters don't have original names stored.")
+  }
+
+  // Ensure they are strictly sorted by score
+  const sortedList = [...targetList].sort((a, b) => b.score - a.score)
+
+  let output = ''
+
+  // If we are exporting the entire list, we optionally append a $fm command at the top
+  if (!hasFlagged) {
+    output += `$fm ${sortedList[0]!.originalName}\n\n`
+  }
+
+  if (total > 1) {
+    const MAX_DISCORD_LENGTH = 2000
+    let currentChunk = `$smp ${sortedList[0]!.originalName}`
+
+    for (let i = 1; i < total; i++) {
+      const currentChar = sortedList[i]
+      if (!currentChar) continue
+      const nextAddition = `$${currentChar.originalName}`
+
+      if (currentChunk.length + nextAddition.length > MAX_DISCORD_LENGTH) {
+        output += currentChunk + '\n\n'
+        const prevChar = sortedList[i - 1]
+        currentChunk = `$smp ${prevChar?.originalName ?? ''}${nextAddition}`
+      } else {
+        currentChunk += nextAddition
+      }
+    }
+
+    const lastChar = sortedList[total - 1]
+    if (currentChunk !== `$smp ${lastChar?.originalName ?? ''}`) {
+      output += currentChunk + '\n\n'
+    }
+  } else if (hasFlagged && total === 1) {
+    throw new Error('You need at least 2 characters selected to generate a differential sort.')
+  }
+
+  return output.trim()
+}
+
+/**
+ * MUDAE EXPORT: NOTES COMMAND ($note)
+ * Groups characters by note and paginates strings based on Discord's 2000-character limit.
+ */
+export function generateExportNotesCommand(targetList: Character[]): string {
+  if (targetList.length === 0) throw new Error('No characters available to export.')
+
+  const noteGroups: Record<string, string[]> = {}
+  targetList.forEach((c) => {
+    const note = (c.note || '').trim()
+    if (note !== '') {
+      if (!noteGroups[note]) noteGroups[note] = []
+      noteGroups[note].push(c.originalName)
+    }
+  })
+
+  if (Object.keys(noteGroups).length === 0) {
+    throw new Error('None of the targeted characters have notes saved.')
+  }
+
+  let output = ''
+  const MAX_DISCORD_LENGTH = 2000
+
+  for (const [noteText, names] of Object.entries(noteGroups)) {
+    let currentNames: string[] = []
+    let currentLength = `$note $${noteText}`.length
+
+    // Refactored to for...of loop so 'name' is typed as 'string' instead of 'string | undefined'
+    for (const name of names) {
+      const nameLen = name.length + (currentNames.length > 0 ? 1 : 0)
+
+      if (currentLength + nameLen > MAX_DISCORD_LENGTH) {
+        output += `$note ${currentNames.join('$')}$${noteText}\n`
+        currentNames = [name]
+        currentLength = `$note $${noteText}`.length + name.length
+      } else {
+        currentNames.push(name)
+        currentLength += nameLen
+      }
+    }
+
+    if (currentNames.length > 0) {
+      output += `$note ${currentNames.join('$')}$${noteText}\n`
+    }
+  }
+
+  return output.trim()
 }

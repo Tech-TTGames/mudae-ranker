@@ -127,7 +127,7 @@ export function useAlerts() {
       color: '#DBDEE1',
       customClass: { input: 'swal-custom-textarea' },
       didOpen: () => {
-        const input = Swal.getInput() as HTMLTextAreaElement
+        const input = Swal.getInput() as unknown as HTMLTextAreaElement
         if (input) input.readOnly = true
       },
     })

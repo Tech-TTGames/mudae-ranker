@@ -141,7 +141,7 @@ export function useAppBoot() {
             loadSavePayload(cloudData)
           } else {
             console.log('☁️ Local save is newer than Cloud save. Queuing push...')
-            syncStore.lastSyncedCloudState = null // Forces overwrite on next tick
+            ;(syncStore as Record<string, any>).lastSyncedCloudState = null
           }
         } else {
           if (cloudMeta.timestamp > localMeta.timestamp) {
@@ -156,7 +156,7 @@ export function useAppBoot() {
               showSuccess('☁️ Synced data from your other device.')
             } else {
               console.log('☁️ User rejected cloud save. Forcing cloud overwrite...')
-              syncStore.lastSyncedCloudState = null
+              ;(syncStore as Record<string, any>).lastSyncedCloudState = null
             }
           }
         }

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { rating, ordinal } from 'openskill'
+import { parseImportData } from '@/utils/io'
 import type { Character } from '@/types/character'
 import type { TierConfig } from '@/types/app'
 
@@ -37,6 +38,87 @@ export const useCharacterStore = defineStore('characters', () => {
         (c.note && c.note.toLowerCase().includes(query)),
     )
   })
+
+  function minimizeName(name: string): string {
+    // Strips spaces and special characters for linkage matching
+    return name.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
+  }
+
+  function hydrateCharacter(c: Partial<Character>): Character {
+    // 1. MIGRATION: Convert legacy Elo -> OpenSkill (if processing old JSON)
+    const rawChar = c as Record<string, any>
+    if (typeof rawChar.elo !== 'undefined' && typeof c.mu === 'undefined') {
+      c.mu = 25.0 + (rawChar.elo - 1200) / 40.0
+      const matches = c.endlessMatches || c.totalMatches || 0
+      c.sigma = matches === 0 ? 8.333 : 1.0 + 7.333 * Math.exp(-0.05 * matches)
+      delete rawChar.elo
+    }
+
+    // 2. UNSEEDED / NEW CHARACTERS
+    if (typeof c.mu === 'undefined') {
+      c.mu = 25.0
+      c.sigma = 8.333
+    }
+
+    // 3. HYDRATE OPENSKILL RATING OBJECT
+    const osRating = rating({ mu: c.mu as number, sigma: c.sigma as number })
+
+    return {
+      id: c.id || crypto.randomUUID(),
+      name: c.name || 'Unknown',
+      originalName: c.originalName || c.name || 'Unknown',
+      minimizedName: c.minimizedName || minimizeName(c.name || 'Unknown'),
+      series: c.series || 'Unknown Series',
+      imageUrl: c.imageUrl || '',
+      note: c.note || '',
+      skip: !!c.skip,
+      linkedTo: c.linkedTo || '',
+      flag: !!c.flag,
+      placementMatchesLeft: c.skip ? 0 : (c.placementMatchesLeft ?? 5),
+      mu: c.mu as number,
+      sigma: c.sigma as number,
+      osRating: osRating,
+      score: ordinal(osRating),
+      totalMatches: c.totalMatches || 0,
+      endlessMatches: c.endlessMatches || 0,
+      swissMatches: c.swissMatches || 0,
+    }
+  }
+
+  function mergeCharacter(characterData: Partial<Character>): Character {
+    for (let i = 0; i < characters.value.length; i++) {
+      const matchChar = characters.value[i]
+      if (!matchChar) continue
+      if (
+        matchChar.originalName === characterData.originalName &&
+        (matchChar.series === characterData.series ||
+          matchChar.series === 'Unknown Series' ||
+          characterData.series === 'Unknown Series')
+      ) {
+        if (
+          matchChar.series === 'Unknown Series' &&
+          characterData.series &&
+          characterData.series !== 'Unknown Series'
+        ) {
+          matchChar.series = characterData.series
+        }
+        if (characterData.note && characterData.note !== '') {
+          matchChar.note = characterData.note
+        }
+        if (characterData.imageUrl && characterData.imageUrl.trim() !== '') {
+          matchChar.imageUrl = characterData.imageUrl
+        }
+        return matchChar
+      }
+    }
+
+    // Brand new arrival
+    characterData.placementMatchesLeft = characterData.skip ? 0 : 5
+    characterData.flag = !characterData.skip
+    const newChar = hydrateCharacter(characterData)
+    characters.value.push(newChar)
+    return newChar
+  }
 
   // --- Actions: Sorting & Deletion ---
 
@@ -353,11 +435,73 @@ export const useCharacterStore = defineStore('characters', () => {
     reapplyLinks()
   }
 
+  // --- Actions: Parser ---
+  function parseInputField(inputText: string) {
+    if (!inputText || inputText.trim() === '') return
+
+    const mergeMode = characters.value.length > 0
+
+    // 1. Let utility parse with awareness of existing state
+    const parsedResult = parseImportData(inputText, mergeMode)
+
+    // 2. Extract character array
+    let charsToImport: Character[] = []
+    if (Array.isArray(parsedResult)) {
+      charsToImport = parsedResult
+    } else if (parsedResult.characters) {
+      charsToImport = parsedResult.characters
+    }
+
+    if (charsToImport.length === 0) return
+
+    // 3. Merge or override existing roster
+    if (mergeMode) {
+      charsToImport.forEach((c: Partial<Character>) => mergeCharacter(c))
+    } else {
+      updateAll(charsToImport.map((c: Partial<Character>) => hydrateCharacter(c)))
+    }
+
+    sortArrayByScore()
+  }
+
+  // --- Actions: Auto-Stratify ---
+
+  function applyTierStratification() {
+    let currentTierIndex = 0
+    let countInCurrentTier = 0
+
+    // Iterate through the already-sorted array
+    for (const char of characters.value) {
+      const activeTier = tierConfig.value[currentTierIndex]
+
+      // If we run out of defined tiers, stop applying notes
+      if (!activeTier) break
+
+      // Apply the tier label as the character's note
+      char.note = activeTier.label
+
+      // If the tier is strictly bounded (size !== -1), track the count
+      if (activeTier.size !== -1) {
+        countInCurrentTier++
+
+        // Move to the next tier once the capacity is reached
+        if (countInCurrentTier >= activeTier.size) {
+          currentTierIndex++
+          countInCurrentTier = 0
+        }
+      }
+      // If size is -1 (unbounded), it will just consume the rest of the list automatically
+    }
+  }
+
   return {
     characters,
     tierConfig,
     unskippedCharacters,
     flaggedCharacters,
+    searchQuery,
+    filteredCharacters,
+    bulkActionTargetList,
     sortArrayByScore,
     deleteCharacter,
     massDeleteFlagged,
@@ -372,7 +516,7 @@ export const useCharacterStore = defineStore('characters', () => {
     absorbAdjacent,
     reapplyLinks,
     applyDragAndDropSort,
-    searchQuery,
-    filteredCharacters,
+    parseInputField,
+    applyTierStratification,
   }
 })

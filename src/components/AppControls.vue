@@ -4,6 +4,11 @@ import { useCharacterStore } from '@/stores/character'
 import { useRankStore } from '@/stores/rank'
 import { useSyncStore } from '@/stores/sync'
 import { useAlerts } from '@/composables/alerts'
+import {
+  generateExportNotesCommand,
+  generateExportSortCommand,
+  exportCharactersToJson,
+} from '@/utils/io.ts'
 
 const characterStore = useCharacterStore()
 const rankStore = useRankStore()
@@ -13,6 +18,7 @@ const alerts = useAlerts()
 // --- Local State ---
 const isCompactMode = ref(false)
 const enableAutosave = ref(true)
+const showTierModal = ref(false)
 
 // Computed helpers based on store state
 const hasCharacters = computed(() => characterStore.characters.length > 0)
@@ -28,8 +34,13 @@ const handleParseInput = async () => {
   )
 
   if (inputData) {
-    // TODO: Connect hybrid JSON/Mudae regex parser here
-    alerts.showWarning('Parser logic pending connection!')
+    try {
+      characterStore.parseInputField(inputData)
+      alerts.showSuccess('Import parsed and applied successfully!')
+    } catch (error) {
+      console.error(error)
+      alerts.showError('Failed to parse input data. Check the console for details.')
+    }
   }
 }
 
@@ -62,6 +73,22 @@ const handleMassLink = async () => {
   }
 }
 
+const handleMassInsert = () => {
+  const targetCount = characterStore.bulkActionTargetList.length
+
+  if (targetCount === 0) {
+    alerts.showError('No characters found to insert into placement matches.')
+    return
+  }
+
+  const started = rankStore.massInsert()
+  if (started) {
+    alerts.showSuccess(`Started placement matches for ${targetCount} character(s)!`)
+  } else {
+    alerts.showError('Failed to start placement matches. Check character list.')
+  }
+}
+
 const handleDeleteSelected = async () => {
   const confirmed = await alerts.confirmAction(
     'Are you sure you want to delete all selected characters? This cannot be undone.',
@@ -74,106 +101,53 @@ const handleDeleteSelected = async () => {
 }
 
 // --- Export Flows ---
-const handleExportJSON = async () => {
-  const exportData = {
-    characters: characterStore.characters
-  }
-  const exportString = JSON.stringify(exportData, null, 2)
-  const wantsToCopy = await alerts.displayExportText(
-    exportString,
-    'Export JSON',
-    'Copy this text to back up your characters.'
-  )
-  if (wantsToCopy) copyToClipboard(exportString)
+// --- Export Flows ---
+const handleExportJSON = () => {
+  // Directly trigger the file download from IO
+  exportCharactersToJson(characterStore.characters)
+  alerts.showSuccess('JSON backup downloaded!')
 }
 
 const handleExportSort = async () => {
   const flagged = characterStore.flaggedCharacters
-  const targetList = flagged.length > 0 ? flagged : [...characterStore.characters]
-  const total = targetList.length
+  const targetList = flagged.length > 0 ? flagged : characterStore.characters
 
-  if (total === 0) return alerts.showError('No characters available to export.')
-  if (targetList[0].originalName === undefined) return alerts.showError("Looks like your characters don't have original names stored.")
-
-  // Ensure they are strictly sorted by score
-  targetList.sort((a, b) => b.score - a.score)
-
-  let output = ''
-  if (flagged.length === 0) {
-    output += `$fm ${targetList[0].originalName}\n\n`
-  }
-
-  if (total > 1) {
-    const MAX_DISCORD_LENGTH = 2000
-    let currentChunk = `$smp ${targetList[0].originalName}`
-
-    for (let i = 1; i < total; i++) {
-      const nextAddition = `$${targetList[i].originalName}`
-
-      if (currentChunk.length + nextAddition.length > MAX_DISCORD_LENGTH) {
-        output += currentChunk + '\n\n'
-        currentChunk = `$smp ${targetList[i-1].originalName}${nextAddition}`
-      } else {
-        currentChunk += nextAddition
-      }
+  try {
+    const output = generateExportSortCommand(targetList, flagged.length > 0)
+    const wantsToCopy = await alerts.displayExportText(
+      output,
+      'Export Sort ($smp)',
+      'Copy your $smp command(s).',
+    )
+    if (wantsToCopy) copyToClipboard(output)
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      alerts.showError(error.message)
+    } else {
+      alerts.showError(String(error))
     }
-
-    if (currentChunk !== `$smp ${targetList[total - 1].originalName}`) {
-      output += currentChunk + '\n\n'
-    }
-  } else if (flagged.length > 0 && total === 1) {
-    return alerts.showError('You need at least 2 characters selected to generate a differential sort.')
   }
-
-  const wantsToCopy = await alerts.displayExportText(output.trim(), 'Export Sort ($smp)', 'Copy your $smp command(s).')
-  if (wantsToCopy) copyToClipboard(output.trim())
 }
 
 const handleExportNotes = async () => {
   const flagged = characterStore.flaggedCharacters
-  const targetList = flagged.length > 0 ? flagged : [...characterStore.characters]
+  const targetList = flagged.length > 0 ? flagged : characterStore.characters
 
-  if (targetList.length === 0) return alerts.showError('No characters available to export.')
-
-  const noteGroups: Record<string, string[]> = {}
-  targetList.forEach(c => {
-    const note = (c.note || '').trim()
-    if (note !== '') {
-      if (!noteGroups[note]) noteGroups[note] = []
-      noteGroups[note].push(c.originalName)
-    }
-  })
-
-  if (Object.keys(noteGroups).length === 0) {
-    return alerts.showError('None of the targeted characters have notes saved.')
-  }
-
-  let output = ''
-  const MAX_DISCORD_LENGTH = 2000
-
-  for (const [noteText, names] of Object.entries(noteGroups)) {
-    let currentNames: string[] = []
-    let currentLength = `$note $${noteText}`.length
-
-    for (let i = 0; i < names.length; i++) {
-      const nameLen = names[i].length + (currentNames.length > 0 ? 1 : 0)
-
-      if (currentLength + nameLen > MAX_DISCORD_LENGTH) {
-        output += `$note ${currentNames.join('$')}$${noteText}\n`
-        currentNames = [names[i]]
-        currentLength = `$note $${noteText}`.length + names[i].length
-      } else {
-        currentNames.push(names[i])
-        currentLength += nameLen
-      }
-    }
-    if (currentNames.length > 0) {
-      output += `$note ${currentNames.join('$')}$${noteText}\n`
+  try {
+    const output = generateExportNotesCommand(targetList)
+    const wantsToCopy = await alerts.displayExportText(
+      output,
+      'Export Notes ($note)',
+      'Copy your $note command(s).',
+    )
+    if (wantsToCopy) copyToClipboard(output)
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      alerts.showError(error.message)
+    } else {
+      alerts.showError(String(error))
     }
   }
-
-  const wantsToCopy = await alerts.displayExportText(output.trim(), 'Export Notes ($note)', 'Copy your $note command(s).')
-  if (wantsToCopy) copyToClipboard(output.trim())
 }
 
 const copyToClipboard = (text: string) => {
@@ -207,10 +181,6 @@ const toggleCloudSync = async () => {
     syncStore.redirectToGitHub()
   }
 }
-
-const handleNotImplemented = (feature: string) => {
-  alerts.showWarning(`${feature} is under construction!`)
-}
 </script>
 
 <template>
@@ -243,11 +213,9 @@ const handleNotImplemented = (feature: string) => {
     <div class="dropdown">
       <button class="btn secondary" :disabled="!hasCharacters">📦 Mass Actions ▾</button>
       <div class="dropdown-content">
-        <button :disabled="flaggedCount === 0" @click="handleNotImplemented('Batch Insert')">
-          ⚡ Batch Insert
-        </button>
+        <button @click="handleMassInsert">📥 Mass Insert (Placement Matches)</button>
         <button @click="handleMassEditNotes">✏️ Edit Local Notes</button>
-        <button @click="handleNotImplemented('Auto-Stratify')">📊 Auto-Stratify Notes</button>
+        <button @click="showTierModal = true">📊 Auto-Stratify Notes</button>
         <button @click="handleMassSkip(true)">⏭️ Mass Skip</button>
         <button @click="handleMassSkip(false)">⏪ Mass Un-Skip</button>
         <button @click="handleMassLink">🔗 Mass Link After</button>
@@ -294,6 +262,9 @@ const handleNotImplemented = (feature: string) => {
 
       <button class="btn danger-btn" @click="handleReset">⚠️ Reset</button>
     </div>
+  </div>
+  <div v-if="showTierModal" class="modal-overlay" @click.self="showTierModal = false">
+    <TierConfigModal @close="showTierModal = false" />
   </div>
 </template>
 
@@ -472,5 +443,18 @@ const handleNotImplemented = (feature: string) => {
   font-weight: bold;
   padding: 4px 8px;
   border-radius: 12px;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
 }
 </style>
