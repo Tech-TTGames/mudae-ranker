@@ -18,7 +18,7 @@ export function parseImportData(rawData: string): Partial<AppSavePayload> | Char
     } else if (parsed.characters) {
       return parsed as Partial<AppSavePayload>
     }
-  } catch (e) {
+  } catch {
     // Fall through to plain text parsing
   }
 

@@ -332,6 +332,28 @@ export const useRankStore = defineStore('rank', () => {
     else if (mode.value === AppMode.Endless) nextEndlessMatch()
   }
 
+  function skipParticipant(targetIndex: 0 | 1) {
+    if (!hasActiveMatch.value) return
+
+    const skippedChar = currentMatch.value[targetIndex]
+
+    if (skippedChar) {
+      skippedChar.skip = true
+    }
+
+    // Since the roster changed, ensure it's sorted
+    characterStore.sortArrayByScore()
+
+    // Route to the next match based on the current mode
+    if (mode.value === AppMode.Placement) {
+      nextPlacementMatch()
+    } else if (mode.value === AppMode.RankFinite) {
+      nextRankMatch()
+    } else if (mode.value === AppMode.Endless) {
+      nextEndlessMatch()
+    }
+  }
+
   function pauseRankMode() {
     if (mode.value === AppMode.Placement) {
       characterStore.characters.forEach((c) => (c.flag = false))
@@ -367,5 +389,6 @@ export const useRankStore = defineStore('rank', () => {
     resolveMatch,
     pauseRankMode,
     resumeRankMode,
+    skipParticipant,
   }
 })

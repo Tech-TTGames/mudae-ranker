@@ -142,9 +142,10 @@ export const useSyncStore = defineStore('sync', () => {
         return JSON.parse(file.content) as AppSavePayload
       }
       throw new Error('Sync file missing inside target Gist.')
-    } catch (error: any) {
-      console.error('Gist Pull Error:', error)
-      syncError.value = error.message
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error)
+      console.error('Gist Pull Error:', msg)
+      syncError.value = msg
       return null
     } finally {
       isSyncing.value = false
@@ -187,9 +188,10 @@ export const useSyncStore = defineStore('sync', () => {
 
       lastSyncedCloudState.value = payloadString
       return true
-    } catch (error: any) {
-      console.error('Gist Push Error:', error)
-      syncError.value = error.message
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error)
+      console.error('Gist Push Error:', msg)
+      syncError.value = msg
       return false
     } finally {
       isSyncing.value = false

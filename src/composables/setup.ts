@@ -42,7 +42,8 @@ export function useAppBoot() {
     }
 
     // Resume active modes based on state
-    if (rankStore.mode === 1) rankStore.resumeRankMode() // RankFinite
+    if (rankStore.mode === 1)
+      rankStore.resumeRankMode() // RankFinite
     else if (rankStore.mode === 3) rankStore.startEndlessRank() // Endless
   }
 
@@ -70,7 +71,7 @@ export function useAppBoot() {
           loadSavePayload(localData)
         }
       } catch (e) {
-        console.error("Failed to load local cache:", e)
+        console.error('Failed to load local cache:', e)
       }
     }
 
@@ -96,30 +97,32 @@ export function useAppBoot() {
 
           if (!localData || localData.characters.length === 0) {
             if (cloudData) loadSavePayload(cloudData)
-            showSuccess("Connected! Loaded your save layout from the cloud.")
+            showSuccess('Connected! Loaded your save layout from the cloud.')
           } else {
             const userWantsCloud = await confirmAction(
               "An existing cloud save was found!\n\nClick 'Yes' to LOAD your cloud save (this will overwrite your current screen).\n\nClick 'Cancel' to KEEP your current screen and overwrite the cloud instead.",
-              "Cloud Save Found"
+              'Cloud Save Found',
             )
 
             if (userWantsCloud) {
               if (cloudData) loadSavePayload(cloudData)
-              showSuccess("Connected! Synced your data down from the cloud.")
+              showSuccess('Connected! Synced your data down from the cloud.')
             } else {
               await syncStore.pushToGist(buildSavePayload())
-              showSuccess("Connected! Cloud save updated with your current local layout.")
+              showSuccess('Connected! Cloud save updated with your current local layout.')
             }
           }
         } else {
-          showSuccess("Connected! Created a fresh private save slot in your cloud.")
+          showSuccess('Connected! Created a fresh private save slot in your cloud.')
         }
-      } catch (err: any) {
-        showError("GitHub Sync Activation Failed: " + (err.message || "Network link failed."))
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Network link failed.'
+        showError('GitHub Sync Activation Failed: ' + msg)
       } finally {
         // Scrub code from URL
         urlParams.delete('code')
-        const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
+        const newUrl =
+          window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '')
         window.history.replaceState({}, document.title, newUrl)
       }
     }
@@ -134,10 +137,10 @@ export function useAppBoot() {
 
         if (cloudMeta.deviceId === syncStore.deviceId) {
           if (cloudMeta.timestamp > localMeta.timestamp) {
-            console.log("☁️ Found a newer save from THIS device. Hydrating...")
+            console.log('☁️ Found a newer save from THIS device. Hydrating...')
             loadSavePayload(cloudData)
           } else {
-            console.log("☁️ Local save is newer than Cloud save. Queuing push...")
+            console.log('☁️ Local save is newer than Cloud save. Queuing push...')
             syncStore.lastSyncedCloudState = null // Forces overwrite on next tick
           }
         } else {
@@ -145,25 +148,25 @@ export function useAppBoot() {
             const dateStr = new Date(cloudMeta.timestamp).toLocaleString()
             const userWantsCloud = await confirmAction(
               `Found a newer save from another device (Saved: ${dateStr}).\n\nClick 'Yes' to LOAD the cloud save (overwriting this device).\n\nClick 'Cancel' to KEEP your current screen (overwriting the cloud).`,
-              "⚠️ CLOUD CONFLICT DETECTED ⚠️"
+              '⚠️ CLOUD CONFLICT DETECTED ⚠️',
             )
 
             if (userWantsCloud) {
               loadSavePayload(cloudData)
-              showSuccess("☁️ Synced data from your other device.")
+              showSuccess('☁️ Synced data from your other device.')
             } else {
-              console.log("☁️ User rejected cloud save. Forcing cloud overwrite...")
+              console.log('☁️ User rejected cloud save. Forcing cloud overwrite...')
               syncStore.lastSyncedCloudState = null
             }
           }
         }
       } catch (err) {
-        console.error("❌ Failed to download background cloud sync on boot:", err)
+        console.error('❌ Failed to download background cloud sync on boot:', err)
       }
     }
   }
 
   return {
-    bootApplication
+    bootApplication,
   }
 }

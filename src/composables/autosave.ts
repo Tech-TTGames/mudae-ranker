@@ -1,11 +1,11 @@
 import { watch } from 'vue'
-import { watchDebounced } from '@vueuse/core';
+import { watchDebounced } from '@vueuse/core'
 
 export function useAutoSave<T>(
   getPayload: () => T,
   storageKey: string,
   cloudSyncCallback?: () => void,
-  cloudDebounceMs: number = 10000
+  cloudDebounceMs: number = 10000,
 ) {
   // 1. INSTANT: Bulletproof local backup so no data is ever lost if the tab closes
   watch(
@@ -21,7 +21,7 @@ export function useAutoSave<T>(
         console.error(`[AutoSave] Local storage failed for ${storageKey}:`, e)
       }
     },
-    { deep: true }
+    { deep: true },
   )
 
   // 2. DELAYED: Safely batch GitHub API calls
@@ -31,7 +31,7 @@ export function useAutoSave<T>(
       () => {
         cloudSyncCallback()
       },
-      { deep: true, debounce: cloudDebounceMs, maxWait: 30000 }
+      { deep: true, debounce: cloudDebounceMs, maxWait: 30000 },
     )
   }
 }

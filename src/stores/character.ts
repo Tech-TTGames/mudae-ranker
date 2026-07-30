@@ -24,6 +24,20 @@ export const useCharacterStore = defineStore('characters', () => {
     flaggedCharacters.value.length > 0 ? flaggedCharacters.value : characters.value,
   )
 
+  const searchQuery = ref('')
+
+  const filteredCharacters = computed(() => {
+    if (!searchQuery.value.trim()) return characters.value
+
+    const query = searchQuery.value.toLowerCase()
+    return characters.value.filter(
+      (c) =>
+        c.name.toLowerCase().includes(query) ||
+        (c.series && c.series.toLowerCase().includes(query)) ||
+        (c.note && c.note.toLowerCase().includes(query)),
+    )
+  })
+
   // --- Actions: Sorting & Deletion ---
 
   function sortArrayByScore() {
@@ -154,13 +168,20 @@ export const useCharacterStore = defineStore('characters', () => {
     sortArrayByScore()
   }
 
-  function absorbAdjacent(activeIndex: number, direction: number) {
-    const targetIndex = activeIndex + direction
+  function absorbAdjacent(activeId: string, direction: number) {
+    // 1. Determine which list the user is actually looking at
+    const activeList = searchQuery.value.trim() ? filteredCharacters.value : characters.value
 
-    if (targetIndex < 0 || targetIndex >= characters.value.length) return
+    // 2. Find the active character in the current visual list
+    const activeListIndex = activeList.findIndex((c) => c.id === activeId)
+    if (activeListIndex === -1) return
 
-    const survivor = characters.value[activeIndex]
-    const target = characters.value[targetIndex]
+    // 3. Find the target neighbor in the same visual list
+    const targetListIndex = activeListIndex + direction
+    if (targetListIndex < 0 || targetListIndex >= activeList.length) return
+
+    const survivor = activeList[activeListIndex]
+    const target = activeList[targetListIndex]
 
     if (!survivor || !target) return
 
@@ -207,8 +228,12 @@ export const useCharacterStore = defineStore('characters', () => {
       }
     })
 
-    characters.value.splice(targetIndex, 1)
-    sortArrayByScore()
+    // 4. Find the target's REAL index in the master array to safely splice it
+    const realTargetIndex = characters.value.findIndex((c) => c.id === target.id)
+    if (realTargetIndex !== -1) {
+      characters.value.splice(realTargetIndex, 1)
+      sortArrayByScore()
+    }
   }
 
   // --- Actions: Cascading Links ---
@@ -347,5 +372,7 @@ export const useCharacterStore = defineStore('characters', () => {
     absorbAdjacent,
     reapplyLinks,
     applyDragAndDropSort,
+    searchQuery,
+    filteredCharacters,
   }
 })
