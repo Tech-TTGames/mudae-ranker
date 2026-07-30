@@ -47,9 +47,8 @@ watch(
             newIndex = firstDiff
           }
 
-          characterStore.updateAll([...newOrder])
-
           if (oldIndex !== -1 && newIndex !== -1) {
+            characterStore.characters = [...newOrder]
             characterStore.applyDragAndDropSort(oldIndex, newIndex)
           }
         } else {
@@ -107,7 +106,7 @@ watch(
 
 <style scoped>
 .roster-container {
-  padding: 10px;
+  padding: 0;
 }
 
 .character-card-container {

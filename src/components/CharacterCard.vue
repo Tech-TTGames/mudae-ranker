@@ -73,7 +73,7 @@ const handleDelete = async () => {
 </script>
 
 <template>
-  <div class="character-card-thumb" :class="{ 'is-skipped': character.skip }" @click="openCard">
+  <div class="character-card-thumb" :class="{ 'is-skipped': character.skip && !character.linkedTo, 'is-linked': character.skip && character.linkedTo }" @click="openCard">
     <div class="image-wrapper">
       <img :src="character.imageUrl" :alt="character.name" draggable="false" @dragstart.prevent />
       <div class="info-overlay">
@@ -166,6 +166,9 @@ const handleDelete = async () => {
               </div>
 
               <div class="danger-zone">
+                <span class="os-stats">
+                  &mu;: {{ character.mu.toFixed(2) }} | &sigma;: {{ character.sigma.toFixed(2) }}
+                </span>
                 <button class="btn-action text-danger" @click="handleDelete">🗑️ Delete</button>
               </div>
             </div>
@@ -297,7 +300,6 @@ const handleDelete = async () => {
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.6);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 .btn-close {
@@ -326,6 +328,8 @@ const handleDelete = async () => {
   width: 100%;
   aspect-ratio: 225 / 350;
   background: #1e1f22;
+  border-radius: 8px 8px 0 0; /* ADDED */
+  overflow: hidden; /* ADDED */
 }
 
 .expanded-visual img {
@@ -450,5 +454,25 @@ const handleDelete = async () => {
 }
 .text-danger:hover {
   background-color: rgba(218, 55, 60, 0.1);
+}
+
+.danger-zone {
+  display: flex;
+  justify-content: space-between; /* Space out the stats and the button */
+  align-items: center;
+  margin-top: 2px;
+  border-top: 1px solid #4e5058;
+  padding-top: 8px;
+}
+
+.os-stats {
+  color: #80848e;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+.character-card-thumb.is-linked {
+  opacity: 0.85;
+  border-color: #5865f2; /* Subtle blurple border */
 }
 </style>

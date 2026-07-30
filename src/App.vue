@@ -27,30 +27,21 @@ onMounted(() => {
 </template>
 
 <style>
-#app-container {
-  min-height: 100vh;
-  background-color: #1e1f22;
-  color: #dbdee1;
-  font-family:
-    Inter,
-    system-ui,
-    -apple-system,
-    sans-serif;
-}
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;900&display=swap');
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
   background-color: #1e1f22;
   color: #dbdee1;
+  font-family: 'Montserrat', system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 </style>

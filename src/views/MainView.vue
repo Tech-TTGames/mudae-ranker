@@ -17,8 +17,8 @@ const rankStore = useRankStore()
 
 <style scoped>
 .main-layout {
-  max-width: 1400px;
+  max-width: 98%;
   margin: 0 auto;
-  padding: 16px;
+  padding: 8px;
 }
 </style>

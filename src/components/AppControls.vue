@@ -9,6 +9,7 @@ import {
   generateExportSortCommand,
   exportCharactersToJson,
 } from '@/utils/io.ts'
+import TierConfigModal from './TierConfigModal.vue'
 
 const characterStore = useCharacterStore()
 const rankStore = useRankStore()
@@ -248,6 +249,12 @@ const toggleCloudSync = async () => {
         </label>
       </div>
     </div>
+    <input
+      type="text"
+      v-model="characterStore.searchQuery"
+      class="search-input"
+      placeholder="Search roster..."
+    />
 
     <!-- System Actions -->
     <div class="control-group system-group">
@@ -456,5 +463,20 @@ const toggleCloudSync = async () => {
   justify-content: center;
   align-items: center;
   z-index: 9999;
+}
+
+.search-input {
+  background-color: #1e1f22;
+  color: #dbdee1;
+  border: 1px solid #4e5058;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+  min-width: 220px;
+  font-family: inherit;
+}
+.search-input:focus {
+  border-color: #5865f2;
 }
 </style>
