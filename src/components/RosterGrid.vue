@@ -15,6 +15,7 @@ const [parentRef, characters] = useDragAndDrop(characterStore.characters, {
 
 let previousIds = characterStore.characters.map((c) => c.id)
 
+// 1. Sync Drag-and-Drop changes BACK to Pinia
 watch(
   characters,
   (newOrder: Character[]) => {
@@ -57,13 +58,13 @@ watch(
       } else {
         characterStore.updateAll([...newOrder])
       }
-
       previousIds = characterStore.characters.map((c) => c.id)
     }
   },
   { deep: true },
 )
 
+// 2. Sync External Pinia changes (Parses/Imports) INTO FormKit
 watch(
   () => characterStore.characters,
   (newStoreChars: Character[]) => {
@@ -71,7 +72,7 @@ watch(
     const uiIds = characters.value.map((c) => c.id)
 
     if (storeIds.join(',') !== uiIds.join(',')) {
-      characters.value = [...newStoreChars]
+      characters.value.splice(0, characters.value.length, ...newStoreChars)
       previousIds = storeIds
     }
   },
@@ -86,7 +87,7 @@ watch(
     </div>
 
     <!-- Active Filter State: Read-Only Grid -->
-    <div v-else-if="characterStore.searchQuery" class="character-card-container is-filtered">
+    <div v-if="characterStore.searchQuery" class="character-card-container is-filtered">
       <div v-if="characterStore.filteredCharacters.length === 0" class="empty-state w-full">
         <p>No characters match your search.</p>
       </div>
@@ -94,11 +95,16 @@ watch(
         v-for="char in characterStore.filteredCharacters"
         :key="char.id"
         :character="char"
+        :readonly="true"
       />
     </div>
 
     <!-- Default State: Interactive Drag & Drop Grid -->
-    <div v-else ref="parentRef" class="character-card-container">
+    <div
+      v-show="characterStore.characters.length > 0 && !characterStore.searchQuery"
+      ref="parentRef"
+      class="character-card-container"
+    >
       <CharacterCard v-for="char in characters" :key="char.id" :character="char" />
     </div>
   </div>
