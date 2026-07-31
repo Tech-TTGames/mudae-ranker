@@ -10,8 +10,8 @@ const characterStore = useCharacterStore()
 
 const [parentRef, characters] = useDragAndDrop(characterStore.characters, {
   group: 'roster',
-  dragClass: 'is-dragging',
-}) as [Ref<HTMLElement | null>, Ref<Character[]>]
+  draggingClass: 'is-dragging',
+}) as unknown as [Ref<HTMLElement | null>, Ref<Character[]>]
 
 let previousIds = characterStore.characters.map((c) => c.id)
 

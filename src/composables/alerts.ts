@@ -1,8 +1,19 @@
 import Swal from 'sweetalert2'
 
 export function useAlerts() {
+  // --- Base Dark Theme Mixin ---
+  const DarkSwal = Swal.mixin({
+    background: '#2b2d31',
+    color: '#dbdee1',
+    confirmButtonColor: '#5865f2', // Discord Blurple
+    cancelButtonColor: '#4e5058',
+    customClass: {
+      input: 'swal-dark-input'
+    },
+  })
+
   // --- Passive Notifications (Toasts) ---
-  const Toast = Swal.mixin({
+  const Toast = DarkSwal.mixin({
     toast: true,
     position: 'top-end',
     showConfirmButton: false,
@@ -40,15 +51,15 @@ export function useAlerts() {
     message: string,
     title: string = 'Are you sure?',
   ): Promise<boolean> => {
-    const result = await Swal.fire({
+    const result = await DarkSwal.fire({
       title: title,
       text: message,
       icon: 'warning',
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
       confirmButtonText: 'Yes',
       cancelButtonText: 'Cancel',
+      confirmButtonColor: '#da373c',
+      cancelButtonColor: '#4e5058',
     })
     return result.isConfirmed
   }
@@ -57,13 +68,11 @@ export function useAlerts() {
     message: string,
     title: string = 'Input Required',
   ): Promise<string | null> => {
-    const result = await Swal.fire({
+    const result = await DarkSwal.fire({
       title: title,
       text: message,
       input: 'text',
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
     })
     return result.isConfirmed ? result.value : null
   }
@@ -73,37 +82,30 @@ export function useAlerts() {
     options: Record<string, string>,
     title: string = 'Make a selection',
   ): Promise<string | null> => {
-    const result = await Swal.fire({
+    const result = await DarkSwal.fire({
       title: title,
       text: message,
       input: 'select',
       inputOptions: options,
       inputPlaceholder: 'Select an option...',
       showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
     })
-
     return result.isConfirmed ? result.value : null
   }
 
-  // --- New Additions: Large Text & Export Data ---
+  // --- Large Text & Export Data ---
   const promptTextArea = async (
     message: string,
     title: string = 'Input Required',
     placeholder: string = '',
   ): Promise<string | null> => {
-    const result = await Swal.fire({
+    const result = await DarkSwal.fire({
       title: title,
       text: message,
       input: 'textarea',
       inputPlaceholder: placeholder,
       showCancelButton: true,
-      confirmButtonColor: '#23A559',
-      cancelButtonColor: '#4E5058',
-      background: '#313338',
-      color: '#DBDEE1',
-      customClass: { input: 'swal-custom-textarea' },
+      confirmButtonColor: '#23A559', // Green for positive data ingestion
     })
     return result.isConfirmed ? result.value : null
   }
@@ -113,7 +115,7 @@ export function useAlerts() {
     title: string = 'Export Data',
     message: string = 'Copy this text.',
   ): Promise<boolean> => {
-    const result = await Swal.fire({
+    const result = await DarkSwal.fire({
       title: title,
       text: message,
       input: 'textarea',
@@ -121,11 +123,6 @@ export function useAlerts() {
       showCancelButton: true,
       confirmButtonText: '📋 Copy to Clipboard',
       cancelButtonText: 'Close',
-      confirmButtonColor: '#5865F2',
-      cancelButtonColor: '#4E5058',
-      background: '#313338',
-      color: '#DBDEE1',
-      customClass: { input: 'swal-custom-textarea' },
       didOpen: () => {
         const input = Swal.getInput() as unknown as HTMLTextAreaElement
         if (input) input.readOnly = true

@@ -211,5 +211,6 @@ export const useSyncStore = defineStore('sync', () => {
     clearCredentials,
     pullFromGist,
     pushToGist,
+    lastSyncedCloudState,
   }
 })

@@ -46,7 +46,7 @@ export const useCharacterStore = defineStore('characters', () => {
 
   function hydrateCharacter(c: Partial<Character>): Character {
     // 1. MIGRATION: Convert legacy Elo -> OpenSkill (if processing old JSON)
-    const rawChar = c as Record<string, any>
+    const rawChar = c as Partial<Character> & { elo?: number }
     if (typeof rawChar.elo !== 'undefined' && typeof c.mu === 'undefined') {
       c.mu = 25.0 + (rawChar.elo - 1200) / 40.0
       const matches = c.endlessMatches || c.totalMatches || 0
@@ -155,31 +155,47 @@ export const useCharacterStore = defineStore('characters', () => {
     characters.value.forEach((c) => (c.flag = false))
   }
 
-  // --- Actions: Mass Toggles ---
+  function applyUnskipMath(c: Character) {
+    c.linkedTo = ''
+
+    // Only reset and compensate if the character's sigma has actually collapsed
+    if (c.sigma <= 0.001) {
+      const preservedScore = c.score
+      c.sigma = 8.333
+      c.mu = preservedScore + 3.0 * c.sigma
+
+      const newRating = rating({ mu: c.mu, sigma: c.sigma })
+      c.osRating = newRating
+      c.score = ordinal(newRating) // Locks in the preserved score safely
+    }
+  }
+
+  // --- Actions: Mass Toggles & Skips ---
+  function toggleSingleSkip(characterId: string, shouldSkip: boolean) {
+    const c = characters.value.find((char) => char.id === characterId)
+    if (!c) return
+
+    c.skip = shouldSkip
+    if (!shouldSkip) {
+      applyUnskipMath(c)
+    }
+
+    // Re-evaluate in case breaking this link shifted followers
+    reapplyLinks()
+  }
 
   function massToggleSkip(shouldSkip: boolean) {
     let updatedCount = 0
-
     bulkActionTargetList.value.forEach((c) => {
       c.skip = shouldSkip
-
       if (!shouldSkip) {
-        c.linkedTo = ''
-
-        // If the character's sigma collapsed, reset it to the 8.333 baseline so they can be ranked again
-        if (c.sigma <= 0.001) {
-          c.sigma = 8.333
-          const newRating = rating({ mu: c.mu, sigma: c.sigma })
-          c.osRating = newRating
-          c.score = ordinal(newRating) // Recalculates mu - 3*sigma
-        }
+        applyUnskipMath(c)
       }
       updatedCount++
     })
 
-    // Trigger cascade link rebuild (To be implemented in Step 1.3)
+    // Trigger cascade link rebuild once at the very end
     reapplyLinks()
-
     return updatedCount
   }
 
@@ -518,5 +534,6 @@ export const useCharacterStore = defineStore('characters', () => {
     applyDragAndDropSort,
     parseInputField,
     applyTierStratification,
+    toggleSingleSkip,
   }
 })

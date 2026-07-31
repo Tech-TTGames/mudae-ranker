@@ -18,8 +18,8 @@ const moveTier = (index: number, direction: number) => {
   const targetIndex = index + direction
   if (targetIndex < 0 || targetIndex >= characterStore.tierConfig.length) return
 
-  const temp = characterStore.tierConfig[index]
-  characterStore.tierConfig[index] = characterStore.tierConfig[targetIndex]
+  const temp = characterStore.tierConfig[index]!
+  characterStore.tierConfig[index] = characterStore.tierConfig[targetIndex]!
   characterStore.tierConfig[targetIndex] = temp
 }
 

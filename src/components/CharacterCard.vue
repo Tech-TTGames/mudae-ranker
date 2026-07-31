@@ -32,12 +32,20 @@ const closeCard = () => {
   showAdvancedEdit.value = false
 }
 
-const updateStringField = (event: Event, field: 'name' | 'series' | 'note' | 'imageUrl') => {
+const updateStringField = (
+  event: Event,
+  field: 'name' | 'series' | 'note' | 'imageUrl' | 'linkedTo',
+) => {
   const target = event.target as HTMLInputElement
   const storeChar = characterStore.characters.find((c) => c.id === props.character.id)
   if (storeChar) {
     storeChar[field] = target.value
   }
+}
+
+const updateSkipToggle = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  characterStore.toggleSingleSkip(props.character.id, target.checked)
 }
 
 const toggleFlag = () => {
@@ -73,7 +81,14 @@ const handleDelete = async () => {
 </script>
 
 <template>
-  <div class="character-card-thumb" :class="{ 'is-skipped': character.skip && !character.linkedTo, 'is-linked': character.skip && character.linkedTo }" @click="openCard">
+  <div
+    class="character-card-thumb"
+    :class="{
+      'is-skipped': character.skip && !character.linkedTo,
+      'is-linked': character.skip && character.linkedTo,
+    }"
+    @click="openCard"
+  >
     <div class="image-wrapper">
       <img :src="character.imageUrl" :alt="character.name" draggable="false" @dragstart.prevent />
       <div class="info-overlay">
@@ -115,6 +130,31 @@ const handleDelete = async () => {
                 />
               </div>
 
+              <div class="input-group checkbox-group">
+                <label class="checkbox-label">
+                  <input
+                    type="checkbox"
+                    class="custom-checkbox"
+                    :checked="character.skip"
+                    @change="(e) => updateSkipToggle(e)"
+                  />
+                  <span class="custom-checkbox-box"></span>
+                  Manual Rank / Follow-Me
+                </label>
+              </div>
+
+              <!-- UPDATED: Hidden when not skipped -->
+              <div v-if="character.skip" class="input-group" style="margin-bottom: 8px">
+                <label class="small-label">Follow-Me Link:</label>
+                <input
+                  type="text"
+                  class="card-text-input"
+                  :value="character.linkedTo"
+                  @change="(e) => updateStringField(e, 'linkedTo')"
+                  placeholder="Exact character name..."
+                />
+              </div>
+
               <div class="action-grid">
                 <button
                   class="btn-action"
@@ -126,7 +166,16 @@ const handleDelete = async () => {
                 <button class="btn-action btn-insert" @click="handleInsert">⚡ Insert</button>
               </div>
 
-              <button class="btn-action btn-merge" @click="handleMergeRight">➡️ Merge Right</button>
+              <button
+                class="btn-action btn-merge"
+                @click="handleMergeRight"
+                :disabled="
+                  characterStore.characters.indexOf(character) ===
+                  characterStore.characters.length - 1
+                "
+              >
+                ➡️ Merge Right
+              </button>
 
               <button
                 class="btn-action btn-edit-toggle"
@@ -474,5 +523,54 @@ const handleDelete = async () => {
 .character-card-thumb.is-linked {
   opacity: 0.85;
   border-color: #5865f2; /* Subtle blurple border */
+}
+
+.checkbox-group {
+  margin-top: 6px;
+  margin-bottom: 8px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #dbdee1;
+  user-select: none;
+}
+
+.custom-checkbox {
+  display: none; /* Hide the ugly native checkbox */
+}
+
+.custom-checkbox-box {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  border: 1px solid #4e5058;
+  border-radius: 4px;
+  background-color: #1e1f22;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+/* Checked State Background */
+.custom-checkbox:checked + .custom-checkbox-box {
+  background-color: #5865f2;
+  border-color: #5865f2;
+}
+
+/* Checked State Checkmark */
+.custom-checkbox:checked + .custom-checkbox-box::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 </style>

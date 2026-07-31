@@ -17,14 +17,42 @@ const syncStore = useSyncStore()
 const alerts = useAlerts()
 
 // --- Local State ---
-const isCompactMode = ref(false)
-const enableAutosave = ref(true)
 const showTierModal = ref(false)
 
 // Computed helpers based on store state
 const hasCharacters = computed(() => characterStore.characters.length > 0)
 const flaggedCount = computed(() => characterStore.flaggedCharacters.length)
 const isCloudConnected = computed(() => !!syncStore.githubToken)
+
+const handleStartPreRank = async () => {
+  const activeCount = characterStore.unskippedCharacters.length
+  if (activeCount < 2) {
+    alerts.showError('You need at least 2 un-skipped characters to rank!')
+    return
+  }
+
+  // Calculate estimated match counts using the exact math from the store
+  const baseRounds = Math.ceil(Math.log2(activeCount))
+  const quickMatches = Math.ceil((activeCount * Math.max(2, baseRounds)) / 2)
+  const balancedMatches = Math.ceil((activeCount * Math.max(3, baseRounds + 1)) / 2)
+  const thoroughMatches = Math.ceil((activeCount * Math.max(4, baseRounds + 3)) / 2)
+
+  const options = {
+    quick: `Quick (~${quickMatches} matches)`,
+    balanced: `Balanced (~${balancedMatches} matches)`,
+    thorough: `Thorough (~${thoroughMatches} matches)`,
+  }
+
+  const choice = await alerts.promptChoice(
+    'Select ranking intensity. Higher intensity takes longer but is more accurate.',
+    options,
+    'Pre-Rank Intensity',
+  )
+
+  if (choice === 'quick' || choice === 'balanced' || choice === 'thorough') {
+    rankStore.startRankMode(choice)
+  }
+}
 
 // --- Input / Parse Flow ---
 const handleParseInput = async () => {
@@ -48,7 +76,7 @@ const handleParseInput = async () => {
 // --- Mass Actions ---
 const handleMassSkip = (skip: boolean) => {
   const count = characterStore.massToggleSkip(skip)
-  alerts.showSuccess(`${skip ? 'Skipped' : 'Un-skipped'} ${count} characters.`)
+  alerts.showSuccess(`Set ${count} characters to ${skip ? 'Manual' : 'Auto'}-Rank.`)
 }
 
 const handleMassEditNotes = async () => {
@@ -195,9 +223,7 @@ const toggleCloudSync = async () => {
     <div class="dropdown">
       <button class="btn rank-btn" :disabled="!hasCharacters">⚔️ Ranking ▾</button>
       <div class="dropdown-content">
-        <button :disabled="!hasCharacters" @click="rankStore.startRankMode('balanced')">
-          Pre-Rank (Finite)
-        </button>
+        <button :disabled="!hasCharacters" @click="handleStartPreRank">Pre-Rank (Finite)</button>
         <button
           :disabled="!hasCharacters || !rankStore.isRankingInProgress"
           @click="rankStore.resumeRankMode()"
@@ -217,9 +243,9 @@ const toggleCloudSync = async () => {
         <button @click="handleMassInsert">📥 Mass Insert (Placement Matches)</button>
         <button @click="handleMassEditNotes">✏️ Edit Local Notes</button>
         <button @click="showTierModal = true">📊 Auto-Stratify Notes</button>
-        <button @click="handleMassSkip(true)">⏭️ Mass Skip</button>
-        <button @click="handleMassSkip(false)">⏪ Mass Un-Skip</button>
-        <button @click="handleMassLink">🔗 Mass Link After</button>
+        <button @click="handleMassSkip(true)">⏭️ Set to Manual Rank</button>
+        <button @click="handleMassSkip(false)">⏪ Set to Auto-Rank</button>
+        <button @click="handleMassLink">🔗 Mass Follow-Me</button>
         <hr class="dropdown-divider" />
         <button :disabled="flaggedCount === 0" @click="characterStore.clearAllFlags()">
           ❌ Clear Selection
@@ -235,18 +261,12 @@ const toggleCloudSync = async () => {
 
     <!-- View & Exports Dropdown -->
     <div class="dropdown">
-      <button class="btn secondary" :disabled="!hasCharacters">📤 Exports / View ▾</button>
+      <button class="btn secondary" :disabled="!hasCharacters">📤 Exports ▾</button>
       <div class="dropdown-content">
         <button @click="handleExportSort">🔀 Export Sort ($smp)</button>
         <button @click="handleExportNotes">📝 Export Notes ($note)</button>
         <button @click="handleExportJSON">💾 Export JSON</button>
-        <hr class="dropdown-divider" />
-        <label class="dropdown-toggle">
-          <input type="checkbox" v-model="isCompactMode" /> Compact View
-        </label>
-        <label class="dropdown-toggle">
-          <input type="checkbox" v-model="enableAutosave" /> Autosave
-        </label>
+        <!--- <hr class="dropdown-divider" /> --->
       </div>
     </div>
     <input
