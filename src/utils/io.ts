@@ -233,7 +233,8 @@ export function generateExportNotesCommand(targetList: Character[]): string {
 
   const noteGroups: Record<string, string[]> = {}
   targetList.forEach((c) => {
-    const note = (c.note || '').trim()
+    const rawNote = (c.note || '').trim()
+    const note = rawNote.replace(/\$/g, '＄')
     if (note !== '') {
       if (!noteGroups[note]) noteGroups[note] = []
       noteGroups[note].push(c.originalName)
