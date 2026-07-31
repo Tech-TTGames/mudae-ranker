@@ -9,10 +9,11 @@ const props = withDefaults(
   defineProps<{
     character: Character
     readonly?: boolean
-    index: number
+    index?: number
   }>(),
   {
     readonly: false,
+    index: 0,
   },
 )
 
@@ -150,7 +151,7 @@ const handleDelete = async () => {
                 :src="character.imageUrl"
                 :alt="character.name"
                 draggable="false"
-                :loading="lazy"
+                loading="lazy"
                 @dragstart.prevent
               />
               <div class="info-overlay">
