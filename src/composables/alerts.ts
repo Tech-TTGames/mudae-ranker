@@ -15,7 +15,7 @@ export function useAlerts() {
   // --- Passive Notifications (Toasts) ---
   const Toast = DarkSwal.mixin({
     toast: true,
-    position: 'top-end',
+    position: 'bottom-end',
     showConfirmButton: false,
     timer: 3000,
     timerProgressBar: true,
@@ -105,7 +105,8 @@ export function useAlerts() {
       input: 'textarea',
       inputPlaceholder: placeholder,
       showCancelButton: true,
-      confirmButtonColor: '#23A559', // Green for positive data ingestion
+      confirmButtonColor: '#23A559',
+      width: '70vw',
     })
     return result.isConfirmed ? result.value : null
   }
@@ -123,6 +124,7 @@ export function useAlerts() {
       showCancelButton: true,
       confirmButtonText: '📋 Copy to Clipboard',
       cancelButtonText: 'Close',
+      width: '70vw',
       didOpen: () => {
         const input = Swal.getInput() as unknown as HTMLTextAreaElement
         if (input) input.readOnly = true

@@ -251,12 +251,10 @@ export function generateExportNotesCommand(targetList: Character[]): string {
     let currentNames: string[] = []
     let currentLength = `$note $${noteText}`.length
 
-    // Refactored to for...of loop so 'name' is typed as 'string' instead of 'string | undefined'
     for (const name of names) {
       const nameLen = name.length + (currentNames.length > 0 ? 1 : 0)
-
       if (currentLength + nameLen > MAX_DISCORD_LENGTH) {
-        output += `$note ${currentNames.join('$')}$${noteText}\n`
+        output += `$note ${currentNames.join('$')}$${noteText}\n\n`
         currentNames = [name]
         currentLength = `$note $${noteText}`.length + name.length
       } else {
@@ -266,7 +264,7 @@ export function generateExportNotesCommand(targetList: Character[]): string {
     }
 
     if (currentNames.length > 0) {
-      output += `$note ${currentNames.join('$')}$${noteText}\n`
+      output += `$note ${currentNames.join('$')}$${noteText}\n\n`
     }
   }
 

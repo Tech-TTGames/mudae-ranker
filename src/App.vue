@@ -68,6 +68,11 @@ body {
   z-index: 10000 !important;
 }
 
+.swal2-textarea {
+  min-height: 50vh !important;
+  box-sizing: border-box;
+}
+
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;

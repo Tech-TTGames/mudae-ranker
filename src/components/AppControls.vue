@@ -440,6 +440,16 @@ const toggleCloudSync = async () => {
   cursor: not-allowed;
 }
 
+.dropdown-content::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  background: transparent;
+}
+
 .text-danger {
   color: #fa777c !important;
 }
