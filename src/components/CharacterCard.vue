@@ -38,7 +38,7 @@ const closeCard = () => {
   showAdvancedEdit.value = false
 }
 
-defineExpose({ openCard, closeCard })
+defineExpose({ openCard, closeCard, characterId: props.character.id })
 
 const handleKeydown = (e: KeyboardEvent) => {
   if (e.key === 'ArrowRight') {

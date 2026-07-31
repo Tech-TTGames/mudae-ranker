@@ -18,15 +18,26 @@ const [parentRef, characters] = useDragAndDrop(characterStore.characters, {
 let previousIds = characterStore.characters.map((c) => c.id)
 
 const handleNavigate = (targetIndex: number, listType: 'filtered' | 'grid') => {
-  const list = listType === 'filtered' ? filteredCards.value : gridCards.value
+  // 1. Get the logical data array to find the true target
+  const dataList = listType === 'filtered' ? characterStore.filteredCharacters : characters.value
 
-  // Ensure the target index exists within the array bounds
-  if (targetIndex >= 0 && targetIndex < list.length) {
-    // Close the active card
-    list.forEach((card) => card?.closeCard?.())
-    // Open the target card
-    list[targetIndex]?.openCard?.()
-  }
+  // 2. Ensure the target index exists within the array bounds
+  if (targetIndex < 0 || targetIndex >= dataList.length) return
+
+  // 3. Grab the ID of the character we actually want to open
+  const targetId = dataList[targetIndex].id
+
+  // 4. Get the scrambled array of Vue component instances
+  const refList = listType === 'filtered' ? filteredCards.value : gridCards.value
+
+  // 5. Iterate and match by ID, ignoring the unreliable array index
+  refList.forEach((card) => {
+    if (card?.characterId === targetId) {
+      card.openCard?.()
+    } else {
+      card.closeCard?.()
+    }
+  })
 }
 
 // 1. Sync Drag-and-Drop changes BACK to Pinia
