@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { watch } from 'vue'
+import { watch, ref } from 'vue'
 import type { Ref } from 'vue'
 import { useDragAndDrop } from '@formkit/drag-and-drop/vue'
 import { useCharacterStore } from '@/stores/character'
@@ -7,6 +7,8 @@ import type { Character } from '@/types/character'
 import CharacterCard from './CharacterCard.vue'
 
 const characterStore = useCharacterStore()
+const filteredCards = ref<InstanceType<typeof CharacterCard>[]>([])
+const gridCards = ref<InstanceType<typeof CharacterCard>[]>([])
 
 const [parentRef, characters] = useDragAndDrop(characterStore.characters, {
   group: 'roster',
@@ -14,6 +16,18 @@ const [parentRef, characters] = useDragAndDrop(characterStore.characters, {
 }) as unknown as [Ref<HTMLElement | null>, Ref<Character[]>]
 
 let previousIds = characterStore.characters.map((c) => c.id)
+
+const handleNavigate = (targetIndex: number, listType: 'filtered' | 'grid') => {
+  const list = listType === 'filtered' ? filteredCards.value : gridCards.value
+
+  // Ensure the target index exists within the array bounds
+  if (targetIndex >= 0 && targetIndex < list.length) {
+    // Close the active card
+    list.forEach((card) => card?.closeCard?.())
+    // Open the target card
+    list[targetIndex]?.openCard?.()
+  }
+}
 
 // 1. Sync Drag-and-Drop changes BACK to Pinia
 watch(
@@ -92,10 +106,13 @@ watch(
         <p>No characters match your search.</p>
       </div>
       <CharacterCard
-        v-for="char in characterStore.filteredCharacters"
+        v-for="(char, index) in characterStore.filteredCharacters"
         :key="char.id"
+        ref="filteredCards"
         :character="char"
         :readonly="true"
+        :index="index"
+        @open-adjacent="(targetIndex) => handleNavigate(targetIndex, 'filtered')"
       />
     </div>
 
@@ -105,7 +122,14 @@ watch(
       ref="parentRef"
       class="character-card-container"
     >
-      <CharacterCard v-for="char in characters" :key="char.id" :character="char" />
+      <CharacterCard
+        v-for="(char, index) in characters"
+        :key="char.id"
+        ref="gridCards"
+        :character="char"
+        :index="index"
+        @open-adjacent="(targetIndex) => handleNavigate(targetIndex, 'grid')"
+      />
     </div>
   </div>
 </template>

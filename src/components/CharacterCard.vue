@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import type { Character } from '@/types/character'
 import { useCharacterStore } from '@/stores/character'
 import { useRankStore } from '@/stores/rank'
@@ -9,11 +9,16 @@ const props = withDefaults(
   defineProps<{
     character: Character
     readonly?: boolean
+    index: number
   }>(),
   {
     readonly: false,
   },
 )
+
+const emit = defineEmits<{
+  (e: 'open-adjacent', targetIndex: number): void
+}>()
 
 const characterStore = useCharacterStore()
 const rankStore = useRankStore()
@@ -31,6 +36,30 @@ const closeCard = () => {
   isExpanded.value = false
   showAdvancedEdit.value = false
 }
+
+defineExpose({ openCard, closeCard })
+
+const handleKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'ArrowRight') {
+    emit('open-adjacent', props.index + 1)
+  } else if (e.key === 'ArrowLeft') {
+    emit('open-adjacent', props.index - 1)
+  } else if (e.key === 'Escape') {
+    closeCard()
+  }
+}
+
+watch(isExpanded, (newVal) => {
+  if (newVal) {
+    window.addEventListener('keydown', handleKeydown)
+  } else {
+    window.removeEventListener('keydown', handleKeydown)
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 
 const updateStringField = (
   event: Event,
@@ -90,7 +119,14 @@ const handleDelete = async () => {
     @click="openCard"
   >
     <div class="image-wrapper">
-      <img :src="character.imageUrl" :alt="character.name" draggable="false" @dragstart.prevent />
+      <img
+        :src="character.imageUrl"
+        :alt="character.name"
+        draggable="false"
+        :loading="index < 75 ? 'eager' : 'lazy'"
+        :fetchpriority="index === 0 ? 'high' : 'auto'"
+        @dragstart.prevent
+      />
       <div class="info-overlay">
         <span class="thumb-name">{{ character.name }}</span>
       </div>
@@ -103,6 +139,9 @@ const handleDelete = async () => {
     <Teleport to="body">
       <Transition name="fade">
         <div v-if="isExpanded" class="expanded-backdrop" @click.stop="closeCard">
+          <button class="nav-btn prev-btn" @click.stop="emit('open-adjacent', index - 1)">
+            &#10094;
+          </button>
           <div class="expanded-card" @click.stop>
             <button class="btn-close" @click="closeCard">✖</button>
 
@@ -111,6 +150,7 @@ const handleDelete = async () => {
                 :src="character.imageUrl"
                 :alt="character.name"
                 draggable="false"
+                :loading="lazy"
                 @dragstart.prevent
               />
               <div class="info-overlay">
@@ -167,17 +207,6 @@ const handleDelete = async () => {
               </div>
 
               <button
-                class="btn-action btn-merge"
-                @click="handleMergeRight"
-                :disabled="
-                  characterStore.characters.indexOf(character) ===
-                  characterStore.characters.length - 1
-                "
-              >
-                ➡️ Merge Right
-              </button>
-
-              <button
                 class="btn-action btn-edit-toggle"
                 @click="showAdvancedEdit = !showAdvancedEdit"
               >
@@ -212,6 +241,16 @@ const handleDelete = async () => {
                     @change="(e) => updateStringField(e, 'imageUrl')"
                   />
                 </div>
+                <button
+                  class="btn-action btn-merge"
+                  @click="handleMergeRight"
+                  :disabled="
+                    characterStore.characters.indexOf(character) ===
+                    characterStore.characters.length - 1
+                  "
+                >
+                  ➡️ Merge Right
+                </button>
               </div>
 
               <div class="danger-zone">
@@ -222,6 +261,9 @@ const handleDelete = async () => {
               </div>
             </div>
           </div>
+          <button class="nav-btn next-btn" @click.stop="emit('open-adjacent', index + 1)">
+            &#10095;
+          </button>
         </div>
       </Transition>
     </Teleport>
@@ -582,5 +624,21 @@ const handleDelete = async () => {
   border: solid white;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
+}
+
+.nav-btn {
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  font-size: 2rem;
+  padding: 1rem;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+  margin: 0 1.5rem;
+}
+
+.nav-btn:hover {
+  background: rgba(0, 0, 0, 0.8);
 }
 </style>
