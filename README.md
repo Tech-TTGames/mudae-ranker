@@ -4,15 +4,14 @@ The ultimate preference-based Mudae collection ranking and management applicatio
 
 **🌐 Play Live: [muda-rank.ttlabs.org](https://muda-rank.ttlabs.org)**
 
-Intended for use with the [Mudae bot for Discord](https://discordbots.org/bot/432610292342587392), this application allows you to manage, sort, and rank your character collection through a series of "X vs Y" preference questions. Once you are done sorting, it automatically generates the exact commands you need to copy-paste into Discord to update your collection's sort order.
+Intended for use with the [Mudae bot for Discord](https://top.gg/bot/432610292342587392), this application allows you to manage, sort, and rank your character collection through a series of "X vs Y" preference questions. Once you are done sorting, it automatically generates the exact commands you need to copy-paste into Discord to update your collection's sort order.
 
 ## 🌟 Key Features
 
-* **Dual-Ranking System:** Choose between Finite Pre-Ranking (standard sorting) or Endless Ranking (Elo-style continuous matchmaking).
+* **Dual-Ranking System:** Choose between Finite Pre-Ranking (Swiss-style tournament brackets) or Endless Ranking (continuous matchmaking).
 * **Cloud Synchronization:** Link your GitHub account to seamlessly save and sync your layout across your desktop and mobile devices.
 * **Smart Importing:** Retain your existing Discord sort order while automatically fetching high-quality images.
-* **Mass Actions:** Batch insert, mass skip, edit notes, and clear selections with a single click.
-* **View Modes:** Toggle between visual Grid mode, compact List mode, or spoiler-free Ghost mode.
+* **Mass Actions & Tiers:** Batch insert, mass skip, edit notes, and auto-stratify your collection into custom tiers with a single click.
 * **Local Auto-Save:** Never lose your progress; changes are automatically cached to your browser's local storage the moment you make them.
 
 ---
@@ -30,27 +29,28 @@ To get your collection into the app without losing your current custom sort orde
 
 ## ⚔️ How to Rank Your Characters
 
-Mudae Ranker offers two distinct ways to organize your collection.
+Mudae Ranker offers two distinct ways to organize your collection, powered by the OpenSkill rating system.
 
 **1. Pre-Rank (Finite)**
-Use this mode first! It uses a traditional insertion-sort algorithm. You will be shown a character and asked to compare them against your already-sorted roster until they find their perfect spot. Once the queue is empty, your entire collection is mathematically sorted.
+Use this mode first! It uses a dynamic Swiss-style bracket system and a dedicated calibration phase for newly added characters. You will be asked to compare characters against your already-sorted roster. Once the mandated rounds are complete, your collection is mathematically sorted.
 
 **2. Endless Rank (∞)**
-Once your collection is generally sorted, use this mode. Endless Rank continuously pits randomly selected characters against each other, adjusting their hidden Elo rating behind the scenes. This is perfect for fine-tuning your top 100 or simply passing the time.
+Once your collection is generally sorted, use this mode. Endless Rank continuously pits randomly selected characters against each other, adjusting their hidden Bayesian skill rating behind the scenes. This is perfect for fine-tuning your top 100 or simply passing the time.
 
 ## ☁️ Cloud Synchronization
 
 You no longer have to rely solely on text file exports to move between your PC and your phone.
 
-Click **Sign in with GitHub** to authorize the application. Mudae Ranker will automatically create a private, hidden Gist on your GitHub profile. Whenever you make changes, the app silently pushes your updated collection to the cloud. When you open the app on another device, it will detect your cloud save and automatically download your latest layout.
+Click **Sign in with GitHub** to authorize the application. Mudae Ranker will automatically create a private, hidden Gist on your GitHub profile. Whenever you make changes, the app silently pushes your updated collection to the cloud. When you open the app on another device, it will detect your cloud save and seamlessly handle conflict resolution to download your latest layout.
 
 ## 📦 Managing Your Collection
 
-Clicking on any character thumbnail opens their full card, allowing you to edit their Mudae note, update their image URL, or flag them to be "Skipped" (which throws them to the bottom of your sort and ignores them during ranking).
+Clicking on any character thumbnail opens their full card, allowing you to edit their Mudae note, update their image URL, or flag them for "Manual Rank" (which ignores them during automated ranking).
 
 Use the **Mass Actions** dropdown to apply changes to multiple flagged characters at once:
 
-* **Batch Insert:** Send a group of newly claimed characters to a specific position in your list.
+* **Batch Insert:** Send a group of newly claimed characters into a dedicated placement matchmaking queue.
+* **Auto-Stratify Notes:** Automatically chunk and label your roster into custom tier sizes (e.g., Top 15, Top 50, etc.).
 * **Mass Skip / Un-Skip:** Quickly mark trade-fodder characters to be ignored.
 * **Mass Link After:** Group specific characters together so they always sort consecutively.
 * **Edit Local Notes:** Apply a specific `$note` string to multiple characters simultaneously.
@@ -69,8 +69,7 @@ Project icon created by and used with permission from [@cybernoguchi](https://x.
 
 This project has evolved across multiple iterations:
 
-* **Original Concept & Base Code:** [jonmervine / DarkMage530](https://github.com/jonmervine/mudae-ranker)
-* **Intermediate Updates:** [LieutenantCrunch](https://github.com/LieutenantCrunch/mudae-ranker)
-* **Current Version:** [Tech-TTGames](https://github.com/Tech-TTGames/mudae-ranker) — Bunch of updates and rework with Vue.
+* **Original Concept:** [jonmervine / DarkMage530](https://github.com/jonmervine/mudae-ranker) & [LieutenantCrunch](https://github.com/LieutenantCrunch/mudae-ranker)
+* **Current Version:** [Tech-TTGames](https://github.com/Tech-TTGames/mudae-ranker)
 
 *Note: Code files are covered by the MIT terms above. The project's branding and graphical design assets are located in the .\public directory and are governed by the separate LICENSE file contained within said directory.*
