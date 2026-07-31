@@ -92,7 +92,7 @@ const handleDelete = async () => {
     <div class="image-wrapper">
       <img :src="character.imageUrl" :alt="character.name" draggable="false" @dragstart.prevent />
       <div class="info-overlay">
-        <span class="name">{{ character.name }}</span>
+        <span class="thumb-name">{{ character.name }}</span>
       </div>
     </div>
     <div v-if="character.note" class="note-badge">
@@ -244,6 +244,7 @@ const handleDelete = async () => {
     box-shadow 0.2s ease;
   overflow: hidden;
   box-sizing: border-box;
+  touch-action: none;
 }
 
 .character-card-thumb:hover {
@@ -289,9 +290,18 @@ const handleDelete = async () => {
   text-align: center;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
-
+.thumb-name {
+  font-size: 0.77rem;
+  color: #fff;
+  font-weight: 300;
+  letter-spacing: -0.05em;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .name {
-  font-size: 0.85rem;
+  font-size: 1rem;
   color: #fff;
   font-weight: 600;
   display: block;
@@ -302,11 +312,11 @@ const handleDelete = async () => {
 .series {
   font-size: 0.75rem;
   color: #949ba4;
+  font-weight: 300;
   margin-top: 2px;
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.25;
 }
 
 .note-badge {

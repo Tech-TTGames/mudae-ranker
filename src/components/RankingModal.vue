@@ -205,15 +205,19 @@ onUnmounted(() => {
 
 <style scoped>
 .matchup-slot :deep(.character-card-thumb) {
-  width: 240px !important; /* Scaled up from standard 110px */
-  border-radius: 10px;
+  width: clamp(240px, 22vw, 380px) !important;
+  border-radius: 12px; /* Bumped slightly to look smoother at larger sizes */
   border-width: 2px;
-  pointer-events: none; /* Prevents card internal click handlers from firing */
+  pointer-events: none;
 }
 
-.matchup-slot :deep(.name) {
-  font-size: 1.1rem;
-  padding: 6px 4px;
+.matchup-slot :deep(.thumb-name) {
+  /* Scale the text dynamically so it doesn't look tiny on a 380px card */
+  font-size: clamp(1.15rem, 1.5vw, 1.4rem);
+  font-weight: 500;
+  padding: 8px 6px;
+  white-space: normal;
+  line-height: 1.2;
 }
 
 .matchup-slot :deep(.note-badge) {
@@ -398,5 +402,44 @@ onUnmounted(() => {
 .modal-fade-enter-from,
 .modal-fade-leave-to {
   opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .ranking-modal-overlay {
+    padding: 16px;
+    justify-content: flex-start; /* Prevent vertical stretching issues */
+    overflow-y: auto; /* Let users scroll if it gets too tight */
+  }
+
+  /* Stack header elements */
+  .modal-header {
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  /* Stack the cards vertically */
+  .vs-container {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* Shrink the cards slightly so both fit on a vertical phone screen */
+  .matchup-slot :deep(.character-card-thumb) {
+    width: 200px !important;
+  }
+
+  /* Hide elements that waste space on mobile */
+  .vs-divider,
+  .keyboard-legend {
+    display: none;
+  }
+
+  /* Adjust skip buttons for touch */
+  .skip-btn {
+    padding: 8px 16px; /* Larger touch target */
+    font-size: 13px;
+  }
 }
 </style>

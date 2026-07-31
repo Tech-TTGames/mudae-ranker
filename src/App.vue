@@ -27,9 +27,6 @@ onMounted(() => {
 </template>
 
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500;600;700&display=swap');
-
-
 html,
 body {
   margin: 0;
@@ -39,14 +36,21 @@ body {
   background-color: #1e1f22;
   color: #dbdee1;
   font-family:
-    'Roboto Condensed',
+    'Exo 2',
     system-ui,
     -apple-system,
     sans-serif;
 
-  /* ADD THESE FOR CRISP DARK MODE FONTS */
+  font-weight: 400;
+
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 * {

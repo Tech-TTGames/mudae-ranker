@@ -8,7 +8,7 @@ export function useAlerts() {
     confirmButtonColor: '#5865f2', // Discord Blurple
     cancelButtonColor: '#4e5058',
     customClass: {
-      input: 'swal-dark-input'
+      input: 'swal-dark-input',
     },
   })
 
