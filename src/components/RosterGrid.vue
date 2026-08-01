@@ -124,7 +124,6 @@ watch(
         :key="char.id"
         ref="filteredCards"
         :character="char"
-        :readonly="true"
         :index="index"
         @open-adjacent="(targetIndex) => handleNavigate(targetIndex, 'filtered')"
       />
