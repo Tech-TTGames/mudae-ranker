@@ -25,7 +25,7 @@ const handleNavigate = (targetIndex: number, listType: 'filtered' | 'grid') => {
   if (targetIndex < 0 || targetIndex >= dataList.length) return
 
   // 3. Grab the ID of the character we actually want to open
-  const targetId = dataList[targetIndex].id
+  const targetId = dataList[targetIndex]!.id
 
   // 4. Get the scrambled array of Vue component instances
   const refList = listType === 'filtered' ? filteredCards.value : gridCards.value
