@@ -42,14 +42,14 @@ const handleNavigate = (targetIndex: number, listType: 'filtered' | 'grid') => {
 
 // 1. Sync Drag-and-Drop changes BACK to Pinia
 watch(
-  characters,
-  (newOrder: Character[]) => {
-    // Prevent sync if a search is active (failsafe)
+  () => characters.value.map((c) => c.id).join(','),
+  (newIdsStr, oldIdsStr) => {
     if (characterStore.searchQuery) return
 
-    const newIds = newOrder.map((c) => c.id)
+    if (newIdsStr !== oldIdsStr) {
+      const newIds = newIdsStr.split(',')
+      const previousIds = oldIdsStr ? oldIdsStr.split(',') : []
 
-    if (newIds.join(',') !== previousIds.join(',')) {
       if (newIds.length === previousIds.length) {
         let firstDiff = -1
         let lastDiff = -1
@@ -65,43 +65,46 @@ watch(
           let oldIndex = -1
           let newIndex = -1
 
-          if (previousIds[firstDiff] === newIds[lastDiff]) {
+          // Dragged left-to-right (e.g., Index 0 to 2)
+          if (
+            previousIds[firstDiff] === newIds[lastDiff] &&
+            previousIds[firstDiff + 1] === newIds[firstDiff]
+          ) {
             oldIndex = firstDiff
             newIndex = lastDiff
-          } else if (previousIds[lastDiff] === newIds[firstDiff]) {
+          }
+          // Dragged right-to-left (e.g., Index 2 to 0)
+          else if (
+            previousIds[lastDiff] === newIds[firstDiff] &&
+            previousIds[lastDiff - 1] === newIds[lastDiff]
+          ) {
             oldIndex = lastDiff
             newIndex = firstDiff
           }
 
           if (oldIndex !== -1 && newIndex !== -1) {
-            characterStore.characters = [...newOrder]
+            characterStore.characters = [...characters.value]
             characterStore.applyDragAndDropSort(oldIndex, newIndex)
+          } else {
+            characterStore.updateAll([...characters.value])
           }
-        } else {
-          characterStore.updateAll([...newOrder])
         }
       } else {
-        characterStore.updateAll([...newOrder])
+        characterStore.updateAll([...characters.value])
       }
-      previousIds = characterStore.characters.map((c) => c.id)
     }
   },
-  { deep: true },
 )
 
 // 2. Sync External Pinia changes (Parses/Imports) INTO FormKit
 watch(
-  () => characterStore.characters,
-  (newStoreChars: Character[]) => {
-    const storeIds = newStoreChars.map((c) => c.id)
-    const uiIds = characters.value.map((c) => c.id)
-
-    if (storeIds.join(',') !== uiIds.join(',')) {
-      characters.value.splice(0, characters.value.length, ...newStoreChars)
-      previousIds = storeIds
+  () => characterStore.characters.map((c) => c.id).join(','),
+  (newStoreIdsStr) => {
+    const uiIdsStr = characters.value.map((c) => c.id).join(',')
+    if (newStoreIdsStr !== uiIdsStr) {
+      characters.value.splice(0, characters.value.length, ...characterStore.characters)
     }
   },
-  { deep: true },
 )
 </script>
 

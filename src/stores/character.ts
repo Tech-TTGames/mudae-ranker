@@ -257,7 +257,13 @@ export const useCharacterStore = defineStore('characters', () => {
   }
 
   function updateAll(newCharacters: Character[]) {
-    characters.value = newCharacters
+    characters.value = newCharacters.map((c) => {
+      // Catch legacy 1.0 imports that lack UUIDs
+      if (!c.id) {
+        return hydrateCharacter(c)
+      }
+      return c
+    })
     sortArrayByScore()
   }
 

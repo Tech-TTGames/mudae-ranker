@@ -71,6 +71,7 @@ const skipCharacter = (side: 'left' | 'right') => {
 }
 
 const triggerUndo = () => {
+  if (animatingChoice.value) return
   if (rankStore.canUndo) {
     rankStore.undoRank()
   }
