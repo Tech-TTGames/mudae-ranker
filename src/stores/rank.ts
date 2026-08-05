@@ -98,7 +98,16 @@ export const useRankStore = defineStore('rank', () => {
 
       // 3. Revert Mode-Specific Play Counts & Histories
       if (mode.value === AppMode.Placement) {
-        if (placementState.value.target) placementState.value.target.placementMatchesLeft++
+        if (placementState.value.target) {
+          // Check if we crossed a character boundary
+          if (placementState.value.target.id !== char1.id) {
+            // We moved to the next character! Push them back to the queue.
+            placementState.value.queue.unshift(placementState.value.target)
+            // Restore the previous character as the active target
+            placementState.value.target = char1
+          }
+          placementState.value.target.placementMatchesLeft++
+        }
       } else if (mode.value === AppMode.RankFinite) {
         if (char1.swissMatches) char1.swissMatches--
         if (char2.swissMatches) char2.swissMatches--
@@ -246,23 +255,32 @@ export const useRankStore = defineStore('rank', () => {
     }
 
     activePool.sort((a, b) => b.score - a.score)
-    const charA = activePool[0]
-    if (!charA) return false
+    let charA: Character | null = null
     let charB: Character | null = null
 
-    for (let i = 1; i < activePool.length; i++) {
-      const candidate = activePool[i]
-      if (candidate) {
-        const sig = getMatchupSignature(charA, candidate)
-        if (!swissHistory.value.has(sig)) {
-          charB = candidate
-          break
+    // Search for the highest-ranked pair that has NOT fought yet
+    for (let i = 0; i < activePool.length - 1; i++) {
+      const candidateA = activePool[i]
+      for (let j = i + 1; j < activePool.length; j++) {
+        const candidateB = activePool[j]
+        if (candidateA && candidateB) {
+          const sig = getMatchupSignature(candidateA, candidateB)
+          if (!swissHistory.value.has(sig)) {
+            charA = candidateA
+            charB = candidateB
+            break
+          }
         }
       }
+      if (charA && charB) break
     }
 
-    if (!charB) charB = activePool[1] ?? null
-    if (!charB) return false
+    // Fallback: If literally every possible combination in the active pool has
+    // already been fought, pair the top two so they can burn their matches and exit.
+    if (!charA || !charB) {
+      charA = activePool[0]!
+      charB = activePool[1]!
+    }
 
     currentMatch.value = [charA, charB]
     return true
@@ -341,9 +359,8 @@ export const useRankStore = defineStore('rank', () => {
     if (undoStack.value.length > 50) undoStack.value.shift()
 
     // Mode specific histories
-    if (mode.value === AppMode.Placement && winnerIndex !== -1) {
-      const opponent = winnerIndex === 0 ? char2 : char1
-      placementState.value.history.add(opponent.originalName)
+    if (mode.value === AppMode.Placement) {
+      placementState.value.history.add(char2.originalName)
     } else if (mode.value === AppMode.RankFinite) {
       swissHistory.value.add(getMatchupSignature(char1, char2))
     }

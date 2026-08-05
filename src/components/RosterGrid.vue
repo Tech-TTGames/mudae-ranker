@@ -15,8 +15,6 @@ const [parentRef, characters] = useDragAndDrop(characterStore.characters, {
   draggingClass: 'is-dragging',
 }) as unknown as [Ref<HTMLElement | null>, Ref<Character[]>]
 
-let previousIds = characterStore.characters.map((c) => c.id)
-
 const handleNavigate = (targetIndex: number, listType: 'filtered' | 'grid') => {
   // 1. Get the logical data array to find the true target
   const dataList = listType === 'filtered' ? characterStore.filteredCharacters : characters.value
