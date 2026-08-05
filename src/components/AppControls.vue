@@ -75,6 +75,11 @@ const handleParseInput = async () => {
 
 // --- Mass Actions ---
 const handleMassSkip = (skip: boolean) => {
+  if (flaggedCount.value === 0) {
+    alerts.showError(`You must flag characters first to set them to ${skip ? 'Manual' : 'Auto'}-Rank.`)
+    return
+  }
+
   const count = characterStore.massToggleSkip(skip)
   alerts.showSuccess(`Set ${count} characters to ${skip ? 'Manual' : 'Auto'}-Rank.`)
 }
@@ -91,6 +96,11 @@ const handleMassEditNotes = async () => {
 }
 
 const handleMassLink = async () => {
+  if (flaggedCount.value === 0) {
+    alerts.showError('You must flag characters first to link them.')
+    return
+  }
+
   const target = await alerts.promptAction(
     'Enter the EXACT character name to link these characters behind:',
     'Mass Link After',
@@ -103,8 +113,12 @@ const handleMassLink = async () => {
 }
 
 const handleMassInsert = () => {
-  const targetCount = characterStore.bulkActionTargetList.length
+  if (flaggedCount.value === 0) {
+    alerts.showError('You must flag characters first to insert them into placement matches.')
+    return
+  }
 
+  const targetCount = characterStore.bulkActionTargetList.length
   if (targetCount === 0) {
     alerts.showError('No characters found to insert into placement matches.')
     return
@@ -129,7 +143,6 @@ const handleDeleteSelected = async () => {
   }
 }
 
-// --- Export Flows ---
 // --- Export Flows ---
 const handleExportJSON = () => {
   // Directly trigger the file download from IO
@@ -240,12 +253,12 @@ const toggleCloudSync = async () => {
     <div class="dropdown">
       <button class="btn secondary" :disabled="!hasCharacters">📦 Mass Actions ▾</button>
       <div class="dropdown-content">
-        <button @click="handleMassInsert">📥 Mass Insert (Placement Matches)</button>
+        <button :disabled="flaggedCount === 0" @click="handleMassInsert">📥 Mass Insert (Placement Matches)</button>
         <button @click="handleMassEditNotes">✏️ Edit Local Notes</button>
         <button @click="showTierModal = true">📊 Auto-Stratify Notes</button>
-        <button @click="handleMassSkip(true)">⏭️ Set to Manual Rank</button>
-        <button @click="handleMassSkip(false)">⏪ Set to Auto-Rank</button>
-        <button @click="handleMassLink">🔗 Mass Follow-Me</button>
+        <button :disabled="flaggedCount === 0" @click="handleMassSkip(true)">⏭️ Set to Manual Rank</button>
+        <button :disabled="flaggedCount === 0" @click="handleMassSkip(false)">⏪ Set to Auto-Rank</button>
+        <button :disabled="flaggedCount === 0" @click="handleMassLink">🔗 Mass Follow-Me</button>
         <hr class="dropdown-divider" />
         <button :disabled="flaggedCount === 0" @click="characterStore.clearAllFlags()">
           ❌ Clear Selection
