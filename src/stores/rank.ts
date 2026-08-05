@@ -411,11 +411,14 @@ export const useRankStore = defineStore('rank', () => {
 
   function skipParticipant(targetIndex: 0 | 1) {
     if (!hasActiveMatch.value) return
-
     const skippedChar = currentMatch.value[targetIndex]
 
     if (skippedChar) {
       skippedChar.skip = true
+
+      if (mode.value === AppMode.Placement && placementState.value.target?.id === skippedChar.id) {
+        placementState.value.target.placementMatchesLeft = 0
+      }
     }
 
     // Since the roster changed, ensure it's sorted
