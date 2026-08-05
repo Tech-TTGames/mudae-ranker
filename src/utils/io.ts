@@ -44,7 +44,7 @@ export function parseImportData(
   const seriesArray = initialText.split('$').slice(1)
 
   // Order Preservation Tracking
-  const shouldSeedRanks = !hasSeriesHeaders && !isMerge
+  const shouldSeedRanks = !isMerge
   const rawLines = initialText
     .split('\n')
     .filter((line) => line.trim() !== '' && !line.startsWith('$'))
