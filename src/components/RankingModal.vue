@@ -185,7 +185,7 @@ onUnmounted(() => {
             @click.stop="chooseWinner('right')"
           >
             <CharacterCard :character="rightChar" :readonly="true" />
-            <div class="slot-action-label"><span class="key-hint">D / →</span> Select</div>
+            <div class="slot-action-label"><span class="key-hint">→ / D </span> Select</div>
             <button class="skip-btn" @click.stop="skipCharacter('right')">
               <span class="key-hint">↓ / S</span> Skip Right
             </button>

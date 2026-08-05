@@ -116,6 +116,7 @@ const handleDelete = async () => {
     :class="{
       'is-skipped': character.skip && !character.linkedTo,
       'is-linked': character.skip && character.linkedTo,
+      'is-flagged-card': character.flag
     }"
     @click="openCard"
   >
@@ -302,6 +303,16 @@ const handleDelete = async () => {
 .character-card-thumb.is-skipped {
   opacity: 0.5;
   filter: grayscale(80%);
+}
+
+.character-card-thumb.is-linked {
+  opacity: 0.85;
+  border-color: #5865f2; /* Subtle blurple border */
+}
+
+.character-card-thumb.is-flagged-card {
+  border-color: #00e5ff;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
 }
 
 .image-wrapper {
@@ -571,11 +582,6 @@ const handleDelete = async () => {
   color: #80848e;
   font-size: 11px;
   font-family: monospace;
-}
-
-.character-card-thumb.is-linked {
-  opacity: 0.85;
-  border-color: #5865f2; /* Subtle blurple border */
 }
 
 .checkbox-group {
