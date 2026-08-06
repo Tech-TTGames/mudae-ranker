@@ -30,7 +30,7 @@ export const useRankStore = defineStore('rank', () => {
 
   // History & Penalties
   const recentMatchups = ref<string[]>([])
-  const MAX_RECENT_MATCHUPS = 25
+  const MAX_RECENT_MATCHUPS = 100
   const undoStack = ref<MatchHistory[]>([])
 
   // Swiss State
@@ -356,7 +356,7 @@ export const useRankStore = defineStore('rank', () => {
       char2OldStats: { mu: char2.mu, sigma: char2.sigma, score: char2.score },
     })
 
-    if (undoStack.value.length > 50) undoStack.value.shift()
+    if (undoStack.value.length > 100) undoStack.value.shift()
 
     // Mode specific histories
     if (mode.value === AppMode.Placement) {
