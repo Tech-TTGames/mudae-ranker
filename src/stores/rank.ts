@@ -30,7 +30,7 @@ export const useRankStore = defineStore('rank', () => {
 
   // History & Penalties
   const recentMatchups = ref<string[]>([])
-  const MAX_RECENT_MATCHUPS = 100
+  const MAX_RECENT_MATCHUPS = 200
   const undoStack = ref<MatchHistory[]>([])
 
   // Swiss State
@@ -198,26 +198,35 @@ export const useRankStore = defineStore('rank', () => {
       return nextPlacementTarget()
     }
 
-    let candidates = activeRoster.filter(
-      (c) =>
-        !placementState.value.history.has(c.originalName) &&
-        !recentMatchups.value.includes(getMatchupSignature(target, c)),
-    )
+    let candidates = activeRoster.filter((c) => !placementState.value.history.has(c.originalName))
 
-    if (candidates.length === 0) {
-      candidates = activeRoster.filter((c) => !placementState.value.history.has(c.originalName))
-    }
     if (candidates.length === 0) {
       placementState.value.history.clear()
       candidates = activeRoster
     }
 
-    candidates.sort((a, b) => Math.abs(a.mu - target.mu) - Math.abs(b.mu - target.mu))
+    // DYNAMIC IGNORE: Sort all candidates by how recently they fought the target
+    candidates.sort((a, b) => {
+      const recencyA = recentMatchups.value.lastIndexOf(getMatchupSignature(target, a))
+      const recencyB = recentMatchups.value.lastIndexOf(getMatchupSignature(target, b))
+      return recencyA - recencyB // Sorts -1 (never fought) to the front, followed by oldest matchups
+    })
 
-    const poolSize = Math.min(3, candidates.length)
-    const opponent = candidates[Math.floor(Math.random() * poolSize)]
+    // Isolate only the candidates tied for the freshest/oldest history
+    const bestRecency = recentMatchups.value.lastIndexOf(
+      getMatchupSignature(target, candidates[0]!),
+    )
+    const freshCandidates = candidates.filter(
+      (c) => recentMatchups.value.lastIndexOf(getMatchupSignature(target, c)) === bestRecency,
+    )
+
+    // Now sort those freshest candidates by closest skill level
+    freshCandidates.sort((a, b) => Math.abs(a.mu - target.mu) - Math.abs(b.mu - target.mu))
+
+    const poolSize = Math.min(3, freshCandidates.length)
+    const opponent = freshCandidates[Math.floor(Math.random() * poolSize)]
+
     if (!opponent) return false
-
     currentMatch.value = [target, opponent]
     return true
   }
@@ -311,24 +320,26 @@ export const useRankStore = defineStore('rank', () => {
     const charA = validChars[Math.floor(Math.random() * poolSizeLeft)]
     if (!charA) return false
 
-    const allCandidates = validChars.filter((c) => c.id !== charA.id)
-    let candidates = allCandidates.filter(
-      (c) => !recentMatchups.value.includes(getMatchupSignature(charA, c)),
-    )
-
-    if (candidates.length === 0) candidates = allCandidates
-
+    const candidates = validChars.filter((c) => c.id !== charA.id)
     const ratingA = [rating({ mu: charA.mu, sigma: charA.sigma })]
 
     candidates.sort((a, b) => {
       const ratingCanA = [rating({ mu: a.mu, sigma: a.sigma })]
       const ratingCanB = [rating({ mu: b.mu, sigma: b.sigma })]
-
       const qualityA = predictDraw([ratingA, ratingCanA])
       const qualityB = predictDraw([ratingA, ratingCanB])
 
-      const weightA = 1.0 - qualityA + (a.endlessMatches || 0) * 2.0
-      const weightB = 1.0 - qualityB + (b.endlessMatches || 0) * 2.0
+      // DYNAMIC IGNORE: Calculate Recency Penalty
+      const recencyA = recentMatchups.value.lastIndexOf(getMatchupSignature(charA, a))
+      const recencyB = recentMatchups.value.lastIndexOf(getMatchupSignature(charA, b))
+
+      // If found in history, penalty scales linearly with how close it is to the end of the 200-item array
+      const penaltyA = recencyA === -1 ? 0 : (recencyA + 1) * 10
+      const penaltyB = recencyB === -1 ? 0 : (recencyB + 1) * 10
+
+      // Apply the massive penalty to the weights so recent matchups get shoved to the bottom
+      const weightA = 1.0 - qualityA + (a.endlessMatches || 0) * 2.0 + penaltyA
+      const weightB = 1.0 - qualityB + (b.endlessMatches || 0) * 2.0 + penaltyB
 
       return weightA - weightB
     })

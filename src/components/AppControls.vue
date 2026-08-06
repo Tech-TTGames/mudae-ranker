@@ -76,7 +76,9 @@ const handleParseInput = async () => {
 // --- Mass Actions ---
 const handleMassSkip = (skip: boolean) => {
   if (flaggedCount.value === 0) {
-    alerts.showError(`You must flag characters first to set them to ${skip ? 'Manual' : 'Auto'}-Rank.`)
+    alerts.showError(
+      `You must flag characters first to set them to ${skip ? 'Manual' : 'Auto'}-Rank.`,
+    )
     return
   }
 
@@ -253,11 +255,17 @@ const toggleCloudSync = async () => {
     <div class="dropdown">
       <button class="btn secondary" :disabled="!hasCharacters">📦 Mass Actions ▾</button>
       <div class="dropdown-content">
-        <button :disabled="flaggedCount === 0" @click="handleMassInsert">📥 Mass Insert (Placement Matches)</button>
+        <button :disabled="flaggedCount === 0" @click="handleMassInsert">
+          📥 Mass Insert (Placement Matches)
+        </button>
         <button @click="handleMassEditNotes">✏️ Edit Local Notes</button>
         <button @click="showTierModal = true">📊 Auto-Stratify Notes</button>
-        <button :disabled="flaggedCount === 0" @click="handleMassSkip(true)">⏭️ Set to Manual Rank</button>
-        <button :disabled="flaggedCount === 0" @click="handleMassSkip(false)">⏪ Set to Auto-Rank</button>
+        <button :disabled="flaggedCount === 0" @click="handleMassSkip(true)">
+          ⏭️ Set to Manual Rank
+        </button>
+        <button :disabled="flaggedCount === 0" @click="handleMassSkip(false)">
+          ⏪ Set to Auto-Rank
+        </button>
         <button :disabled="flaggedCount === 0" @click="handleMassLink">🔗 Mass Follow-Me</button>
         <hr class="dropdown-divider" />
         <button :disabled="flaggedCount === 0" @click="characterStore.clearAllFlags()">

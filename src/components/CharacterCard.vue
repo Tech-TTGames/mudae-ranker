@@ -116,7 +116,7 @@ const handleDelete = async () => {
     :class="{
       'is-skipped': character.skip && !character.linkedTo,
       'is-linked': character.skip && character.linkedTo,
-      'is-flagged-card': character.flag
+      'is-flagged-card': character.flag,
     }"
     @click="openCard"
   >
