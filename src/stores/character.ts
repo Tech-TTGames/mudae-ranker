@@ -79,7 +79,7 @@ export const useCharacterStore = defineStore('characters', () => {
       sigma: c.sigma as number,
       osRating: osRating,
       score: ordinal(osRating),
-      totalMatches: c.totalMatches || 0,
+      totalMatches: Math.max(c.totalMatches || 0, endless + swiss),
       endlessMatches: c.endlessMatches || 0,
       swissMatches: c.swissMatches || 0,
     }
@@ -238,6 +238,14 @@ export const useCharacterStore = defineStore('characters', () => {
     return updatedCount
   }
 
+  function massResetMatchCounts() {
+    characters.value.forEach((c) => {
+      c.totalMatches = 0
+      c.endlessMatches = 0
+      c.swissMatches = 0
+    })
+  }
+
   // --- Actions: Edit Mode Utilities ---
 
   function getLowestMu(): number {
@@ -257,13 +265,7 @@ export const useCharacterStore = defineStore('characters', () => {
   }
 
   function updateAll(newCharacters: Character[]) {
-    characters.value = newCharacters.map((c) => {
-      // Catch legacy 1.0 imports that lack UUIDs
-      if (!c.id) {
-        return hydrateCharacter(c)
-      }
-      return c
-    })
+    characters.value = newCharacters.map((c) => hydrateCharacter(c))
     sortArrayByScore()
   }
 
@@ -296,6 +298,9 @@ export const useCharacterStore = defineStore('characters', () => {
     survivor.score = target.score
     survivor.placementMatchesLeft = target.placementMatchesLeft
     survivor.skip = target.skip
+    survivor.totalMatches = target.totalMatches
+    survivor.endlessMatches = target.endlessMatches
+    survivor.swissMatches = target.swissMatches
 
     if (!survivor.linkedTo || survivor.linkedTo.trim() === '') {
       survivor.linkedTo = target.linkedTo
@@ -531,6 +536,7 @@ export const useCharacterStore = defineStore('characters', () => {
     massToggleSkip,
     massEditNotes,
     massLinkAfter,
+    massResetMatchCounts,
     getLowestMu,
     getLowestScore,
     updateAll,

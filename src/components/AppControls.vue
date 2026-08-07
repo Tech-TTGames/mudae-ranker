@@ -145,6 +145,19 @@ const handleDeleteSelected = async () => {
   }
 }
 
+const handleResetMatchCounts = async () => {
+  const confirmed = await alerts.confirmAction(
+    'Are you sure you want to reset all match histories to 0? Their OpenSkill scores will remain unchanged.',
+    'Reset Match Counts',
+  )
+  if (confirmed) {
+    characterStore.massResetMatchCounts()
+    rankStore.undoStack = []
+
+    alerts.showSuccess('All match counts have been reset to 0.')
+  }
+}
+
 // --- Export Flows ---
 const handleExportJSON = () => {
   // Directly trigger the file download from IO
@@ -270,6 +283,9 @@ const toggleCloudSync = async () => {
         <hr class="dropdown-divider" />
         <button :disabled="flaggedCount === 0" @click="characterStore.clearAllFlags()">
           ❌ Clear Selection
+        </button>
+        <button class="text-danger" @click="handleResetMatchCounts">
+          🔄 Reset All Match Counts
         </button>
         <button :disabled="flaggedCount === 0" class="text-danger" @click="handleDeleteSelected">
           🗑️ Delete Selected
