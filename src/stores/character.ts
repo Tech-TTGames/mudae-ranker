@@ -79,7 +79,7 @@ export const useCharacterStore = defineStore('characters', () => {
       sigma: c.sigma as number,
       osRating: osRating,
       score: ordinal(osRating),
-      totalMatches: Math.max(c.totalMatches || 0, endless + swiss),
+      totalMatches: Math.max(c.totalMatches || 0, (c.endlessMatches || 0) + (c.swissMatches || 0)),
       endlessMatches: c.endlessMatches || 0,
       swissMatches: c.swissMatches || 0,
     }
