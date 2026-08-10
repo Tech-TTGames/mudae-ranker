@@ -44,6 +44,9 @@ watch(
   (newIdsStr, oldIdsStr) => {
     if (characterStore.searchQuery) return
 
+    const storeIdsStr = characterStore.characters.map((c) => c.id).join(',')
+    if (newIdsStr === storeIdsStr) return
+
     if (newIdsStr !== oldIdsStr) {
       const newIds = newIdsStr.split(',')
       const previousIds = oldIdsStr ? oldIdsStr.split(',') : []

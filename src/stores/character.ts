@@ -265,7 +265,16 @@ export const useCharacterStore = defineStore('characters', () => {
   }
 
   function updateAll(newCharacters: Character[]) {
-    characters.value = newCharacters.map((c) => hydrateCharacter(c))
+    characters.value = newCharacters.map((c) => {
+      if (!c.id || typeof c.mu === 'undefined') {
+        return hydrateCharacter(c)
+      }
+
+      const endless = c.endlessMatches || 0
+      const swiss = c.swissMatches || 0
+      c.totalMatches = Math.max(c.totalMatches || 0, endless + swiss)
+      return c
+    })
     sortArrayByScore()
   }
 
