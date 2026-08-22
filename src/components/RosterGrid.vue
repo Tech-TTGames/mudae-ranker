@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { watch, ref } from 'vue'
-import type { Ref } from 'vue'
 import { useDragAndDrop } from '@formkit/drag-and-drop/vue'
+import { handleEnd } from '@formkit/drag-and-drop'
 import { useCharacterStore } from '@/stores/character'
-import type { Character } from '@/types/character'
 import CharacterCard from './CharacterCard.vue'
 
 const characterStore = useCharacterStore()
@@ -13,8 +12,60 @@ const gridCards = ref<InstanceType<typeof CharacterCard>[]>([])
 const [parentRef, characters] = useDragAndDrop(characterStore.characters, {
   group: 'roster',
   draggingClass: 'is-dragging',
-}) as unknown as [Ref<HTMLElement | null>, Ref<Character[]>]
+  handleEnd(data) {
+    // 1. Re-invoke FormKit's core drop logic so it finishes updating the DOM and array
+    handleEnd(data)
 
+    // Prevent sync if a search is active (failsafe)
+    if (characterStore.searchQuery) return
+
+    // 2. Diff the newly sorted FormKit array against the original (untouched) Pinia store
+    const oldIdsStr = characterStore.characters.map((c) => c.id).join(',')
+    const newIdsStr = characters.value.map((c) => c.id).join(',')
+
+    if (newIdsStr !== oldIdsStr) {
+      const newIds = newIdsStr.split(',')
+      const previousIds = oldIdsStr ? oldIdsStr.split(',') : []
+
+      if (newIds.length === previousIds.length) {
+        let firstDiff = -1
+        let lastDiff = -1
+        for (let i = 0; i < newIds.length; i++) {
+          if (newIds[i] !== previousIds[i]) {
+            if (firstDiff === -1) firstDiff = i
+            lastDiff = i
+          }
+        }
+        if (firstDiff !== -1 && lastDiff !== -1) {
+          let oldIndex = -1
+          let newIndex = -1
+          if (
+            previousIds[firstDiff] === newIds[lastDiff] &&
+            previousIds[firstDiff + 1] === newIds[firstDiff]
+          ) {
+            oldIndex = firstDiff
+            newIndex = lastDiff
+          } else if (
+            previousIds[lastDiff] === newIds[firstDiff] &&
+            previousIds[lastDiff - 1] === newIds[lastDiff]
+          ) {
+            oldIndex = lastDiff
+            newIndex = firstDiff
+          }
+
+          if (oldIndex !== -1 && newIndex !== -1) {
+            characterStore.characters = [...characters.value]
+            characterStore.applyDragAndDropSort(oldIndex, newIndex)
+          } else {
+            characterStore.updateAll([...characters.value])
+          }
+        }
+      } else {
+        characterStore.updateAll([...characters.value])
+      }
+    }
+  }
+})
 const handleNavigate = (targetIndex: number, listType: 'filtered' | 'grid') => {
   // 1. Get the logical data array to find the true target
   const dataList = listType === 'filtered' ? characterStore.filteredCharacters : characters.value
@@ -37,65 +88,6 @@ const handleNavigate = (targetIndex: number, listType: 'filtered' | 'grid') => {
     }
   })
 }
-
-// 1. Sync Drag-and-Drop changes BACK to Pinia
-watch(
-  () => characters.value.map((c) => c.id).join(','),
-  (newIdsStr, oldIdsStr) => {
-    if (characterStore.searchQuery) return
-
-    const storeIdsStr = characterStore.characters.map((c) => c.id).join(',')
-    if (newIdsStr === storeIdsStr) return
-
-    if (newIdsStr !== oldIdsStr) {
-      const newIds = newIdsStr.split(',')
-      const previousIds = oldIdsStr ? oldIdsStr.split(',') : []
-
-      if (newIds.length === previousIds.length) {
-        let firstDiff = -1
-        let lastDiff = -1
-
-        for (let i = 0; i < newIds.length; i++) {
-          if (newIds[i] !== previousIds[i]) {
-            if (firstDiff === -1) firstDiff = i
-            lastDiff = i
-          }
-        }
-
-        if (firstDiff !== -1 && lastDiff !== -1) {
-          let oldIndex = -1
-          let newIndex = -1
-
-          // Dragged left-to-right (e.g., Index 0 to 2)
-          if (
-            previousIds[firstDiff] === newIds[lastDiff] &&
-            previousIds[firstDiff + 1] === newIds[firstDiff]
-          ) {
-            oldIndex = firstDiff
-            newIndex = lastDiff
-          }
-          // Dragged right-to-left (e.g., Index 2 to 0)
-          else if (
-            previousIds[lastDiff] === newIds[firstDiff] &&
-            previousIds[lastDiff - 1] === newIds[lastDiff]
-          ) {
-            oldIndex = lastDiff
-            newIndex = firstDiff
-          }
-
-          if (oldIndex !== -1 && newIndex !== -1) {
-            characterStore.characters = [...characters.value]
-            characterStore.applyDragAndDropSort(oldIndex, newIndex)
-          } else {
-            characterStore.updateAll([...characters.value])
-          }
-        }
-      } else {
-        characterStore.updateAll([...characters.value])
-      }
-    }
-  },
-)
 
 // 2. Sync External Pinia changes (Parses/Imports) INTO FormKit
 watch(
