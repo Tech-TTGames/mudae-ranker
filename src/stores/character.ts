@@ -126,7 +126,7 @@ export const useCharacterStore = defineStore('characters', () => {
     // Enforces descending conservative score, with alphabetical fallback to prevent scrambled unseeded imports
     characters.value.sort((a, b) => {
       const diff = b.score - a.score
-      if (Math.abs(diff) < 0.0001) {
+      if (Math.abs(diff) < 1e-12) {
         return a.originalName.localeCompare(b.originalName)
       }
       return diff
