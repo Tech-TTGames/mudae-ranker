@@ -29,6 +29,10 @@ const isExpanded = ref(false)
 const showAdvancedEdit = ref(false)
 
 const openCard = () => {
+  if (characterStore.isFlagMode) {
+    props.character.flag = !props.character.flag
+    return
+  }
   if (props.readonly) return
   isExpanded.value = true
 }

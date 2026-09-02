@@ -264,6 +264,13 @@ const toggleCloudSync = async () => {
       </div>
     </div>
 
+    <button
+      class="btn"
+      :class="{ 'btn-active-cyan': characterStore.isFlagMode }"
+      @click="characterStore.isFlagMode = !characterStore.isFlagMode"
+    >
+      {{ characterStore.isFlagMode ? '✅ Flagging Mode ON' : '🖱️ Flagging Mode OFF' }}
+    </button>
     <!-- Mass Actions Dropdown -->
     <div class="dropdown">
       <button class="btn secondary" :disabled="!hasCharacters">📦 Mass Actions ▾</button>
@@ -281,6 +288,9 @@ const toggleCloudSync = async () => {
         </button>
         <button :disabled="flaggedCount === 0" @click="handleMassLink">🔗 Mass Follow-Me</button>
         <hr class="dropdown-divider" />
+        <button @click="characterStore.massFlagVisible()">
+          👁️ Flag All Visible
+        </button>
         <button :disabled="flaggedCount === 0" @click="characterStore.clearAllFlags()">
           ❌ Clear Selection
         </button>

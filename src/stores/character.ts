@@ -14,6 +14,7 @@ export const useCharacterStore = defineStore('characters', () => {
     { label: '🔼', size: 50 },
     { label: '', size: -1 },
   ])
+  const isFlagMode = ref(false)
 
   // --- Getters ---
   const unskippedCharacters = computed(() => characters.value.filter((c) => !c.skip))
@@ -149,6 +150,11 @@ export const useCharacterStore = defineStore('characters', () => {
       }
     }
     sortArrayByScore()
+  }
+
+  function massFlagVisible() {
+    const targetList = searchQuery.value.trim() ? filteredCharacters.value : characters.value
+    targetList.forEach((c) => (c.flag = true))
   }
 
   function clearAllFlags() {
@@ -533,6 +539,7 @@ export const useCharacterStore = defineStore('characters', () => {
   return {
     characters,
     tierConfig,
+    isFlagMode,
     unskippedCharacters,
     flaggedCharacters,
     searchQuery,
@@ -541,6 +548,7 @@ export const useCharacterStore = defineStore('characters', () => {
     sortArrayByScore,
     deleteCharacter,
     massDeleteFlagged,
+    massFlagVisible,
     clearAllFlags,
     massToggleSkip,
     massEditNotes,
