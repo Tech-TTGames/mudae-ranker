@@ -30,7 +30,7 @@ const showAdvancedEdit = ref(false)
 
 const openCard = () => {
   if (characterStore.isFlagMode) {
-    props.character.flag = !props.character.flag
+    toggleFlag()
     return
   }
   if (props.readonly) return
