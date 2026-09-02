@@ -265,11 +265,11 @@ const toggleCloudSync = async () => {
     </div>
 
     <button
-      class="btn"
+      class="btn secondary"
       :class="{ 'btn-active-cyan': characterStore.isFlagMode }"
       @click="characterStore.isFlagMode = !characterStore.isFlagMode"
     >
-      {{ characterStore.isFlagMode ? '✅ Flagging Mode ON' : '🖱️ Flagging Mode OFF' }}
+      {{ characterStore.isFlagMode ? '🚩 Flagging Mode' : '🖱️ Interactive Mode' }}
     </button>
     <!-- Mass Actions Dropdown -->
     <div class="dropdown">
@@ -438,6 +438,14 @@ const toggleCloudSync = async () => {
   background-color: rgba(148, 155, 164, 0.1);
   color: #949ba4;
   border-color: #4e5058;
+}
+
+.btn.btn-active-cyan {
+  background-color: #00b0f4;
+  color: white;
+}
+.btn.btn-active-cyan:hover:not(:disabled) {
+  background-color: #008ebf;
 }
 
 .dropdown {
