@@ -137,7 +137,7 @@ const handleDelete = async () => {
         <span class="thumb-name">{{ character.name }}</span>
       </div>
     </div>
-    <div v-if="character.note" class="note-badge">
+    <div v-if="character.note && !readonly" class="note-badge">
       {{ character.note }}
     </div>
 
