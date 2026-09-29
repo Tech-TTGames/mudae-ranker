@@ -293,6 +293,9 @@ const handleDelete = async () => {
   overflow: hidden;
   box-sizing: border-box;
   touch-action: none;
+  will-change: transform, box-shadow;
+  content-visibility: auto;
+  contain-intrinsic-size: 111px 171px;
 }
 
 .character-card-thumb:hover {
