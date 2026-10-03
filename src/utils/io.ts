@@ -1,7 +1,23 @@
-import { rating, ordinal } from 'openskill'
+import { rating } from 'openskill'
 import type { Character } from '@/types/character'
 import type { AppSavePayload, TierConfig } from '@/types/app'
 import { AppMode } from '@/types/app'
+
+/**
+ * Strips out unapproved properties (like legacy keys or derived objects)
+ * by returning a new object strictly matching the provided keys.
+ */
+export function pickKeys<T, K extends keyof T>(obj: T, keys: readonly K[]): Pick<T, K> {
+  const result = {} as Pick<T, K>;
+
+  keys.forEach((key) => {
+    if (obj[key] !== undefined) {
+      result[key] = obj[key];
+    }
+  });
+
+  return result;
+}
 
 /**
  * PARSE & IMPORT
@@ -81,9 +97,21 @@ export function parseImportData(
       const characterName = originalName.replace(/(?: \([A-Z]+\))?/gi, '').trim()
 
       // Calculate OpenSkill seed values to preserve list sequence
-      const rankOffset = shouldSeedRanks ? (totalCharactersToImport - globalImportIndex) * 0.05 : 0
-      const startingSigma = shouldSeedRanks ? 7.0 : 8.333
-      const startingMu = 25.0 + rankOffset
+      // Use a zero-sum centered distribution to map the manual list into a safe probability space.
+      const MAX_SPREAD = 10.0; // Determines the max deviation from 25.0 (e.g., boundaries of 15.0 and 35.0)
+
+      // Calculate a normalized position between -1.0 (bottom of list) and 1.0 (top of list)
+      const normalizedPosition = totalCharactersToImport > 1
+          ? ((totalCharactersToImport - 1 - globalImportIndex) / (totalCharactersToImport - 1)) * 2 - 1
+          : 0;
+
+      // The offset is now perfectly balanced. Half the characters gain mu, half lose mu.
+      // The global average remains exactly 25.0, respecting the Bayesian prior.
+      const rankOffset = shouldSeedRanks ? (normalizedPosition * MAX_SPREAD) : 0;
+      const startingMu = 25.0 + rankOffset;
+
+      // Assign a tighter uncertainty to manually seeded lists since the user already established confidence
+      const startingSigma = shouldSeedRanks ? 2.0 : 8.333;
 
       globalImportIndex++
 
@@ -105,7 +133,6 @@ export function parseImportData(
         placementMatchesLeft: 5,
         mu: startingMu,
         sigma: startingSigma,
-        score: ordinal(defaultRating),
         osRating: defaultRating,
       })
     })
@@ -185,8 +212,8 @@ export function generateExportSortCommand(targetList: Character[], hasFlagged: b
     throw new Error("Looks like your characters don't have original names stored.")
   }
 
-  // Ensure they are strictly sorted by score
-  const sortedList = [...targetList].sort((a, b) => b.score - a.score)
+  // Ensure they are strictly sorted by rating
+  const sortedList = [...targetList].sort((a, b) => b.mu - a.mu)
 
   let output = ''
 

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { rate, rating, ordinal, predictDraw } from 'openskill'
+import { rate, rating, predictDraw, predictWin } from 'openskill'
 import { bradleyTerryFull } from 'openskill/models'
 import { useCharacterStore } from './character'
 import type { Character } from '@/types/character'
@@ -16,8 +16,8 @@ export interface PlacementState {
 export interface MatchHistory {
   char1Id: string
   char2Id: string
-  char1OldStats: { mu: number; sigma: number; score: number }
-  char2OldStats: { mu: number; sigma: number; score: number }
+  char1OldStats: { mu: number; sigma: number }
+  char2OldStats: { mu: number; sigma: number }
 }
 
 export const useRankStore = defineStore('rank', () => {
@@ -84,12 +84,10 @@ export const useRankStore = defineStore('rank', () => {
       // 1. Revert OpenSkill Stats
       char1.mu = lastMatch.char1OldStats.mu
       char1.sigma = lastMatch.char1OldStats.sigma
-      char1.score = lastMatch.char1OldStats.score
       char1.osRating = rating({ mu: char1.mu, sigma: char1.sigma })
 
       char2.mu = lastMatch.char2OldStats.mu
       char2.sigma = lastMatch.char2OldStats.sigma
-      char2.score = lastMatch.char2OldStats.score
       char2.osRating = rating({ mu: char2.mu, sigma: char2.sigma })
 
       // 2. Revert Global Play Counts
@@ -124,8 +122,8 @@ export const useRankStore = defineStore('rank', () => {
       // 4. Force the UI to display the reverted matchup
       currentMatch.value = [char1, char2]
 
-      // Resort in case the reverted score shuffled their rank
-      characterStore.sortArrayByScore()
+      // Resort in case the reverted rating shuffled their rank
+      characterStore.reapplyLinks()
       return true
     }
 
@@ -148,7 +146,6 @@ export const useRankStore = defineStore('rank', () => {
       if (c.sigma <= 0.001) {
         c.sigma = 8.333
         c.osRating = rating({ mu: c.mu, sigma: c.sigma })
-        c.score = ordinal(c.osRating)
       }
     })
 
@@ -172,7 +169,7 @@ export const useRankStore = defineStore('rank', () => {
       placementState.value.active = false
       mode.value = AppMode.Edit
       characterStore.characters.forEach((c) => (c.flag = false))
-      characterStore.sortArrayByScore()
+      characterStore.sortArray()
       return false
     }
 
@@ -184,51 +181,49 @@ export const useRankStore = defineStore('rank', () => {
   }
 
   function nextPlacementMatch(): boolean {
-    const target = placementState.value.target
-    if (!target || target.placementMatchesLeft <= 0) {
-      return nextPlacementTarget()
-    }
+    const target = placementState.value.target;
+    if (!target || target.placementMatchesLeft <= 0) return nextPlacementTarget();
 
     const activeRoster = characterStore.unskippedCharacters.filter(
       (c) => c.id !== target.id && !placementState.value.queue.some((qc) => qc.id === c.id),
-    )
+    );
 
     if (activeRoster.length === 0) {
-      target.placementMatchesLeft = 0
-      return nextPlacementTarget()
+      target.placementMatchesLeft = 0;
+      return nextPlacementTarget();
     }
 
-    let candidates = activeRoster.filter((c) => !placementState.value.history.has(c.originalName))
-
+    let candidates = activeRoster.filter((c) => !placementState.value.history.has(c.originalName));
     if (candidates.length === 0) {
-      placementState.value.history.clear()
-      candidates = activeRoster
+      placementState.value.history.clear();
+      candidates = activeRoster;
     }
 
-    // DYNAMIC IGNORE: Sort all candidates by how recently they fought the target
+    const targetRating = [rating({ mu: target.mu, sigma: target.sigma })];
+
+    // Bayesian Bisection: Find the candidate where P(win) is mathematically closest to 0.5
     candidates.sort((a, b) => {
-      const recencyA = recentMatchups.value.lastIndexOf(getMatchupSignature(target, a))
-      const recencyB = recentMatchups.value.lastIndexOf(getMatchupSignature(target, b))
-      return recencyA - recencyB // Sorts -1 (never fought) to the front, followed by oldest matchups
-    })
+      const ratingA = [rating({ mu: a.mu, sigma: a.sigma })];
+      const ratingB = [rating({ mu: b.mu, sigma: b.sigma })];
 
-    // Isolate only the candidates tied for the freshest/oldest history
-    const bestRecency = recentMatchups.value.lastIndexOf(
-      getMatchupSignature(target, candidates[0]!),
-    )
-    const freshCandidates = candidates.filter(
-      (c) => recentMatchups.value.lastIndexOf(getMatchupSignature(target, c)) === bestRecency,
-    )
+      // Calculate predictive probabilities using OpenSkill's native models
+      const probTargetWinsA = predictWin([targetRating, ratingA])[0] ?? 0.5;
+      const probTargetWinsB = predictWin([targetRating, ratingB])[0] ?? 0.5;
 
-    // Now sort those freshest candidates by closest skill level
-    freshCandidates.sort((a, b) => Math.abs(a.mu - target.mu) - Math.abs(b.mu - target.mu))
+      // Calculate Shannon entropy divergence from perfect uncertainty
+      const entropyA = Math.abs(0.5 - probTargetWinsA);
+      const entropyB = Math.abs(0.5 - probTargetWinsB);
 
-    const poolSize = Math.min(3, freshCandidates.length)
-    const opponent = freshCandidates[Math.floor(Math.random() * poolSize)]
+      return entropyA - entropyB; // Sort ascending; lowest difference from 0.5 is first
+    });
 
-    if (!opponent) return false
-    currentMatch.value = [target, opponent]
-    return true
+    // Pick from the top 3 most informative candidates to introduce slight stochasticity and prevent fatigue
+    const poolSize = Math.min(3, candidates.length);
+    const opponent = candidates[Math.floor(Math.random() * poolSize)];
+
+    if (!opponent) return false;
+    currentMatch.value = [target, opponent];
+    return true;
   }
 
   // --- Actions: Swiss Engine ---
@@ -263,7 +258,7 @@ export const useRankStore = defineStore('rank', () => {
       return false
     }
 
-    activePool.sort((a, b) => b.score - a.score)
+    activePool.sort((a, b) => b.mu - a.mu)
     let charA: Character | null = null
     let charB: Character | null = null
 
@@ -305,51 +300,58 @@ export const useRankStore = defineStore('rank', () => {
   }
 
   function nextEndlessMatch(): boolean {
-    const validChars = characterStore.unskippedCharacters
+    const validChars = characterStore.unskippedCharacters;
     if (validChars.length < 2) {
-      pauseRankMode()
-      return false
+      pauseRankMode();
+      return false;
     }
 
+    // ACTIVE LEARNING PHASE 1: Prioritize characters who lack matches OR have high uncertainty (sigma)
     validChars.forEach((c) => {
-      if (typeof c.endlessMatches === 'undefined') c.endlessMatches = 0
-    })
-    validChars.sort((a, b) => (a.endlessMatches || 0) - (b.endlessMatches || 0))
+      if (typeof c.endlessMatches === 'undefined') c.endlessMatches = 0;
+    });
 
-    const poolSizeLeft = Math.max(2, Math.min(15, Math.floor(validChars.length * 0.15)))
-    const charA = validChars[Math.floor(Math.random() * poolSizeLeft)]
-    if (!charA) return false
+    validChars.sort((a, b) => {
+        const weightA = (a.endlessMatches || 0) - a.sigma;
+        const weightB = (b.endlessMatches || 0) - b.sigma;
+        return weightA - weightB; // Ascending: lowest matches and highest sigma goes first
+    });
 
-    const candidates = validChars.filter((c) => c.id !== charA.id)
-    const ratingA = [rating({ mu: charA.mu, sigma: charA.sigma })]
+    const poolSizeLeft = Math.max(2, Math.min(15, Math.floor(validChars.length * 0.15)));
+    const charA = validChars[Math.floor(Math.random() * poolSizeLeft)];
+    if (!charA) return false;
 
+    const candidates = validChars.filter((c) => c.id !== charA.id);
+    const ratingA = [rating({ mu: charA.mu, sigma: charA.sigma })];
+
+    // ACTIVE LEARNING PHASE 2: Balance match fairness with system entropy reduction
     candidates.sort((a, b) => {
-      const ratingCanA = [rating({ mu: a.mu, sigma: a.sigma })]
-      const ratingCanB = [rating({ mu: b.mu, sigma: b.sigma })]
-      const qualityA = predictDraw([ratingA, ratingCanA])
-      const qualityB = predictDraw([ratingA, ratingCanB])
+      const ratingCanA = [rating({ mu: a.mu, sigma: a.sigma })];
+      const ratingCanB = [rating({ mu: b.mu, sigma: b.sigma })];
 
-      // DYNAMIC IGNORE: Calculate Recency Penalty
-      const recencyA = recentMatchups.value.lastIndexOf(getMatchupSignature(charA, a))
-      const recencyB = recentMatchups.value.lastIndexOf(getMatchupSignature(charA, b))
+      // Fairness evaluation (Surrogate for match quality)
+      const qualityA = predictDraw([ratingA, ratingCanA]);
+      const qualityB = predictDraw([ratingA, ratingCanB]);
 
-      // If found in history, penalty scales linearly with how close it is to the end of the 200-item array
-      const penaltyA = recencyA === -1 ? 0 : (recencyA + 1) * 10
-      const penaltyB = recencyB === -1 ? 0 : (recencyB + 1) * 10
+      const recencyA = recentMatchups.value.lastIndexOf(getMatchupSignature(charA, a));
+      const recencyB = recentMatchups.value.lastIndexOf(getMatchupSignature(charA, b));
+      const penaltyA = recencyA === -1 ? 0 : (recencyA + 1) * 10;
+      const penaltyB = recencyB === -1 ? 0 : (recencyB + 1) * 10;
 
-      // Apply the massive penalty to the weights so recent matchups get shoved to the bottom
-      const weightA = 1.0 - qualityA + (a.endlessMatches || 0) * 2.0 + penaltyA
-      const weightB = 1.0 - qualityB + (b.endlessMatches || 0) * 2.0 + penaltyB
+      // By subtracting the candidate's sigma, we actively seek out noisy, volatile opponents
+      // to map their true position in the hierarchy faster (lower weight is better).
+      const weightA = (1.0 - qualityA) + (a.endlessMatches || 0) * 2.0 + penaltyA - a.sigma;
+      const weightB = (1.0 - qualityB) + (b.endlessMatches || 0) * 2.0 + penaltyB - b.sigma;
 
-      return weightA - weightB
-    })
+      return weightA - weightB;
+    });
 
-    const rightPoolSize = Math.min(30, candidates.length)
-    const charB = candidates[Math.floor(Math.random() * rightPoolSize)]
-    if (!charB) return false
+    const rightPoolSize = Math.min(30, candidates.length);
+    const charB = candidates[Math.floor(Math.random() * rightPoolSize)];
+    if (!charB) return false;
 
-    currentMatch.value = [charA, charB]
-    return true
+    currentMatch.value = [charA, charB];
+    return true;
   }
 
   // --- Actions: Unified Resolution ---
@@ -363,8 +365,8 @@ export const useRankStore = defineStore('rank', () => {
     undoStack.value.push({
       char1Id: char1.id,
       char2Id: char2.id,
-      char1OldStats: { mu: char1.mu, sigma: char1.sigma, score: char1.score },
-      char2OldStats: { mu: char2.mu, sigma: char2.sigma, score: char2.score },
+      char1OldStats: { mu: char1.mu, sigma: char1.sigma },
+      char2OldStats: { mu: char2.mu, sigma: char2.sigma },
     })
 
     if (undoStack.value.length > 100) undoStack.value.shift()
@@ -407,12 +409,10 @@ export const useRankStore = defineStore('rank', () => {
       char1.mu = rating1.mu
       char1.sigma = rating1.sigma
       char1.osRating = rating1
-      char1.score = ordinal(rating1)
 
       char2.mu = rating2.mu
       char2.sigma = rating2.sigma
       char2.osRating = rating2
-      char2.score = ordinal(rating2)
     }
 
     // Stat Tick
@@ -429,7 +429,7 @@ export const useRankStore = defineStore('rank', () => {
       char2.endlessMatches = (char2.endlessMatches || 0) + 1
     }
 
-    characterStore.sortArrayByScore()
+    characterStore.reapplyLinks()
 
     // Route to next match
     if (mode.value === AppMode.Placement) nextPlacementMatch()
@@ -450,7 +450,7 @@ export const useRankStore = defineStore('rank', () => {
     }
 
     // Since the roster changed, ensure it's sorted
-    characterStore.sortArrayByScore()
+    characterStore.sortArray()
 
     // Route to the next match based on the current mode
     if (mode.value === AppMode.Placement) {
@@ -471,7 +471,6 @@ export const useRankStore = defineStore('rank', () => {
     }
     mode.value = AppMode.Edit
     characterStore.reapplyLinks()
-    characterStore.sortArrayByScore()
   }
 
   function resumeRankMode() {

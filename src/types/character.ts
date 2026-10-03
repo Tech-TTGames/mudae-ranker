@@ -26,8 +26,11 @@ export interface Character {
   // OpenSkill Core
   mu: number
   sigma: number
-
-  // UI/Sorting Metadata
-  score: number // The conservative score (mu - 3*sigma)
   osRating?: OpenSkillRating
 }
+
+export const CHARACTER_KEYS: (keyof Character)[] = [
+  'id', 'name', 'originalName', 'minimizedName', 'series', 'imageUrl', 'note',
+  'skip', 'flag', 'linkedTo', 'totalMatches', 'endlessMatches', 'swissMatches',
+  'placementMatchesLeft', 'mu', 'sigma'
+]

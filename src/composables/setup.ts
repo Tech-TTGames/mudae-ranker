@@ -3,6 +3,8 @@ import { useRankStore } from '@/stores/rank'
 import { useSyncStore } from '@/stores/sync'
 import { useAutoSave } from '@/composables/autosave'
 import { useAlerts } from '@/composables/alerts'
+import { pickKeys } from '@/utils/io.ts'
+import { CHARACTER_KEYS } from '@/types/character'
 import type { AppSavePayload } from '@/types/app'
 
 export function useAppBoot() {
@@ -19,7 +21,7 @@ export function useAppBoot() {
       rankingInProgress: rankStore.isRankingInProgress,
       activeMode: rankStore.mode,
     },
-    characters: characterStore.characters,
+    characters: characterStore.characters.map((char) => pickKeys(char, CHARACTER_KEYS)),
     tierConfig: characterStore.tierConfig,
     metadata: {
       timestamp: Date.now(),

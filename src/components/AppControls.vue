@@ -147,7 +147,7 @@ const handleDeleteSelected = async () => {
 
 const handleResetMatchCounts = async () => {
   const confirmed = await alerts.confirmAction(
-    'Are you sure you want to reset all match histories to 0? Their OpenSkill scores will remain unchanged.',
+    'Are you sure you want to reset all match histories to 0? Their OpenSkill evaluations will remain unchanged.',
     'Reset Match Counts',
   )
   if (confirmed) {

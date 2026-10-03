@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { rating, ordinal } from 'openskill'
+import { rating } from 'openskill'
 import { parseImportData } from '@/utils/io'
 import type { Character } from '@/types/character'
 import type { TierConfig } from '@/types/app'
@@ -79,7 +79,6 @@ export const useCharacterStore = defineStore('characters', () => {
       mu: c.mu as number,
       sigma: c.sigma as number,
       osRating: osRating,
-      score: ordinal(osRating),
       totalMatches: Math.max(c.totalMatches || 0, (c.endlessMatches || 0) + (c.swissMatches || 0)),
       endlessMatches: c.endlessMatches || 0,
       swissMatches: c.swissMatches || 0,
@@ -123,10 +122,10 @@ export const useCharacterStore = defineStore('characters', () => {
 
   // --- Actions: Sorting & Deletion ---
 
-  function sortArrayByScore() {
-    // Enforces descending conservative score, with alphabetical fallback to prevent scrambled unseeded imports
+  function sortArray() {
+    // Enforces descending rating, with alphabetical fallback to prevent scrambled unseeded imports
     characters.value.sort((a, b) => {
-      const diff = b.score - a.score
+      const diff = b.mu - a.mu
       if (Math.abs(diff) < 1e-12) {
         return a.originalName.localeCompare(b.originalName)
       }
@@ -149,7 +148,7 @@ export const useCharacterStore = defineStore('characters', () => {
         characters.value.splice(i, 1)
       }
     }
-    sortArrayByScore()
+    reapplyLinks()
   }
 
   function massFlagVisible() {
@@ -164,15 +163,15 @@ export const useCharacterStore = defineStore('characters', () => {
   function applyUnskipMath(c: Character) {
     c.linkedTo = ''
 
-    // Only reset and compensate if the character's sigma has actually collapsed
-    if (c.sigma <= 0.001) {
-      const preservedScore = c.score
-      c.sigma = 8.333
-      c.mu = preservedScore + 3.0 * c.sigma
+    // Detect variance collapse (frozen state due to skip/link locks)
+    if (c.sigma <= 0.1) {
+      // Retain the current mu, which accurately reflects their position in the hierarchy.
+      // Inject a moderate amount of standard deviation to thaw the parameter and permit future mobility.
+      const dynamicTau = 4.0; // Half of initial uncertainty (8.333 / 2)
+      c.sigma = Math.min(8.333, Math.sqrt((c.sigma ** 2) + (dynamicTau ** 2)));
 
-      const newRating = rating({ mu: c.mu, sigma: c.sigma })
-      c.osRating = newRating
-      c.score = ordinal(newRating) // Locks in the preserved score safely
+      // Update the rating object
+      c.osRating = rating({ mu: c.mu, sigma: c.sigma });
     }
   }
 
@@ -238,7 +237,7 @@ export const useCharacterStore = defineStore('characters', () => {
       updatedCount++
     })
 
-    // Trigger cascade link rebuild (To be implemented in Step 1.3)
+    // Trigger cascade link rebuild
     reapplyLinks()
 
     return updatedCount
@@ -262,13 +261,81 @@ export const useCharacterStore = defineStore('characters', () => {
     return lowest === 100.0 ? 10.0 : lowest
   }
 
-  function getLowestScore(): number {
-    let lowest = 100.0
-    characters.value.forEach((c) => {
-      if (typeof c.score === 'number' && c.score < lowest) lowest = c.score
-    })
-    return lowest === 100.0 ? 0.0 : lowest
+  /**
+   * Conditionally sanitizes and replanes the mathematical foundation of an imported dataset
+   * if legacy rating inflation or variance collapse is detected, preserving ordinal intent.
+   */
+  function conditionallyReplaneRoster(characters: Character[], bypassDiagnostics = false) {
+    if (characters.length === 0) return;
+
+    // 1. Diagnostics: Detect severe macroeconomic inflation or deflation
+    const globalMu = characters.reduce((sum, c) => sum + c.mu, 0) / characters.length;
+    const maxMu = Math.max(...characters.map((c) => c.mu));
+    const hasLegacyScore = characters.some((c) => 'score' in c && typeof c.score === 'number');
+
+    // Thresholds: Legacy score exists, global average drifted > 2 points, or mu exceeds 50
+    const isCorrupted = hasLegacyScore || Math.abs(globalMu - 25.0) > 2.0 || maxMu > 50.0;
+
+    if (!isCorrupted && !bypassDiagnostics) return;
+
+    if (hasLegacyScore) {
+      console.warn("Legacy score detected. Forcing replane to preserve ordinal hierarchy...");
+    } else {
+      console.warn("Legacy rating economy corruption detected. Re-planing ecosystem...");
+    }
+
+    if (bypassDiagnostics) {
+      console.warn("Diagnostics bypassed. Proceeding with re-planing.");
+    }
+
+    // 2. Snapshot the user's intended ordinal hierarchy
+    // Excludes LINKED characters (who derive stats dynamically), but INCLUDE SKIPPED characters
+    // so their frozen ratings are also properly sanitized and centered.
+    const activeRoster = characters.filter((c) => !c.linkedTo);
+    activeRoster.sort((a: any, b: any) => {
+      if (hasLegacyScore && typeof b.score === 'number' && typeof a.score === 'number') {
+        return b.score - a.score;
+      }
+      return b.mu - a.mu;
+    });
+
+    // 3. Zero-Sum Redistribution (Mean Centering)
+    const MAX_SPREAD = 15.0; // Enforce safe boundaries between mu = 10.0 and mu = 40.0
+    const totalActive = activeRoster.length;
+
+    activeRoster.forEach((char, index) => {
+      // Map the character to a normalized position between 1.0 (top) and -1.0 (bottom)
+      const normalizedPosition = totalActive > 1
+          ? ((totalActive - 1 - index) / (totalActive - 1)) * 2 - 1
+          : 0;
+
+      // Assign a perfectly centered mu based on their ordinal position
+      char.mu = 25.0 + (normalizedPosition * MAX_SPREAD);
+
+      // 4. Normalize and Thaw Variance (Tau injection)
+      // OpenSkill's natural bounds are ~1.5 (highly confident) to 8.333 (unranked)
+      const SIGMA_MIN = 1.5;
+      const SIGMA_MAX = 8.333;
+
+      if (typeof char.sigma !== 'number' || isNaN(char.sigma)) {
+        char.sigma = SIGMA_MAX; // Failsafe for completely missing data
+      } else {
+        // Step A (Normalize): Clamp the existing sigma into the safe standard range
+        const normalizedSigma = Math.max(SIGMA_MIN, Math.min(SIGMA_MAX, char.sigma));
+
+        // Step B (Thaw): Inject a flat 0.5 variance to promote mobility on their new mu
+        char.sigma = Math.min(SIGMA_MAX, normalizedSigma + 0.5);
+      }
+
+      // Re-hydrate the native OpenSkill rating object
+      char.osRating = rating({ mu: char.mu, sigma: char.sigma });
+
+      if ('score' in char) {
+        delete char.score;
+      }
+    });
   }
+
 
   function updateAll(newCharacters: Character[]) {
     characters.value = newCharacters.map((c) => {
@@ -276,17 +343,22 @@ export const useCharacterStore = defineStore('characters', () => {
         return hydrateCharacter(c)
       }
 
+      if (!c.skip || c.linkedTo.trim() === '') {
+        c.linkedTo = ''
+      }
+
       const endless = c.endlessMatches || 0
       const swiss = c.swissMatches || 0
       c.totalMatches = Math.max(c.totalMatches || 0, endless + swiss)
       return c
     })
-    sortArrayByScore()
+    conditionallyReplaneRoster(characters.value)
+    reapplyLinks()
   }
 
   function addNewCharacter(character: Character) {
     characters.value.push(character)
-    sortArrayByScore()
+    sortArray()
   }
 
   function absorbAdjacent(activeId: string, direction: number) {
@@ -310,7 +382,6 @@ export const useCharacterStore = defineStore('characters', () => {
     survivor.mu = target.mu
     survivor.sigma = target.sigma
     survivor.osRating = target.osRating
-    survivor.score = target.score
     survivor.placementMatchesLeft = target.placementMatchesLeft
     survivor.skip = target.skip
     survivor.totalMatches = target.totalMatches
@@ -356,12 +427,11 @@ export const useCharacterStore = defineStore('characters', () => {
     const realTargetIndex = characters.value.findIndex((c) => c.id === target.id)
     if (realTargetIndex !== -1) {
       characters.value.splice(realTargetIndex, 1)
-      sortArrayByScore()
+      reapplyLinks()
     }
   }
 
   // --- Actions: Cascading Links ---
-
   function reapplyLinks() {
     const mainList: Character[] = []
     const linkedList: Character[] = []
@@ -394,19 +464,16 @@ export const useCharacterStore = defineStore('characters', () => {
     let cascadeOffset = 0.0001
 
     // 3. Recursive insertion function
-    function insertWithLinks(char: Character, parentScore: number | null = null) {
+    function insertWithLinks(char: Character, parentMu: number | null = null) {
       // Prevent infinite loops if users accidentally created a circular dependency
       if (processedSet.has(char.originalName)) return
       processedSet.add(char.originalName)
 
-      if (parentScore !== null) {
-        // Force sigma to basically 0, making Score exactly equal to Mu
-        char.mu = parentScore - cascadeOffset
-        char.sigma = 0.001
+      if (parentMu !== null) {
+        char.mu = parentMu - cascadeOffset
         cascadeOffset += 0.0001
 
         char.osRating = rating({ mu: char.mu, sigma: char.sigma })
-        char.score = char.mu // Since sigma is tiny, score = mu
       } else {
         cascadeOffset = 0.0001
       }
@@ -423,7 +490,7 @@ export const useCharacterStore = defineStore('characters', () => {
 
       // Recursively chain all followers behind this character
       links.forEach((linkedChar) => {
-        insertWithLinks(linkedChar, char.score)
+        insertWithLinks(linkedChar, char.mu)
       })
     }
 
@@ -432,49 +499,51 @@ export const useCharacterStore = defineStore('characters', () => {
 
     // 5. Clean up orphans (linked to a character that doesn't exist)
     Object.keys(linkMap).forEach((key) => {
-      linkMap[key]?.forEach((char) => trulyDiscarded.push(char))
+      linkMap[key]?.forEach((char) => {
+        char.skip = false
+        applyUnskipMath(char)
+        trulyDiscarded.push(char)
+      })
     })
 
     finalArray.push(...trulyDiscarded)
 
     // 6. Overwrite the state and sort
     characters.value = finalArray
-    sortArrayByScore()
+    sortArray()
   }
 
   function applyDragAndDropSort(oldIndex: number, newIndex: number) {
-    if (oldIndex === newIndex) return
+    if (oldIndex === newIndex) return;
 
-    const movedChar = characters.value[newIndex]
-    if (!movedChar) return
-    const prevChar = newIndex > 0 ? characters.value[newIndex - 1] : null
-    const nextChar = newIndex < characters.value.length - 1 ? characters.value[newIndex + 1] : null
+    const movedChar = characters.value[newIndex];
+    if (!movedChar) return;
 
-    let targetScore = 25.0 // Failsafe for an empty array, though technically impossible here
+    const prevChar = newIndex > 0 ? characters.value[newIndex - 1] : null;
+    const nextChar = newIndex < characters.value.length - 1 ? characters.value[newIndex + 1] : null;
 
-    // 1. Determine target score based on boundary vs. inline drop
+    // 1. Interpolate strictly within the mu space, completely ignoring sigma
+    let targetMu = 25.0;
     if (prevChar && nextChar) {
-      // Dropped in the middle: exact average of the two neighbors
-      targetScore = (prevChar.score + nextChar.score) / 2.0
+      targetMu = (prevChar.mu + nextChar.mu) / 2.0;
     } else if (nextChar) {
-      // Dropped at the absolute top: barely edge out the former #1
-      targetScore = nextChar.score + 0.1
+      targetMu = nextChar.mu + 0.5; // Nominal upper boundary bump for rank 1
     } else if (prevChar) {
-      // Dropped at the absolute bottom: barely fall behind the former last place
-      targetScore = prevChar.score - 0.1
+      targetMu = prevChar.mu - 0.5; // Nominal lower boundary drop for last place
     }
 
-    // 2. Barely penalize sigma to prevent the score from crashing
-    movedChar.sigma = Math.min(8.333, (movedChar.sigma || 4.0) + 0.1)
+    // 2. Safely apply the inferred mean derived from the surrounding environment
+    movedChar.mu = targetMu;
 
-    // 3. Reverse engineer mu so the final conservative math precisely matches the UI drop position
-    movedChar.mu = targetScore + 3.0 * movedChar.sigma
+    // 3. Inject Variance (Tau). The human manual intervention represents a disruption.
+    // We expand sigma via standard addition of variance to allow OpenSkill to re-verify later.
+    const varianceInjection = 1.5;
+    movedChar.sigma = Math.min(8.333, Math.sqrt((movedChar.sigma ** 2) + (varianceInjection ** 2)));
 
-    // 4. Hydrate the OpenSkill object and display score
-    movedChar.osRating = rating({ mu: movedChar.mu, sigma: movedChar.sigma })
-    movedChar.score = ordinal(movedChar.osRating)
+    // 4. Hydrate the correct OpenSkill object
+    movedChar.osRating = rating({ mu: movedChar.mu, sigma: movedChar.sigma });
 
-    reapplyLinks()
+    reapplyLinks();
   }
 
   // --- Actions: Parser ---
@@ -500,10 +569,10 @@ export const useCharacterStore = defineStore('characters', () => {
     if (mergeMode) {
       charsToImport.forEach((c: Partial<Character>) => mergeCharacter(c))
     } else {
-      updateAll(charsToImport.map((c: Partial<Character>) => hydrateCharacter(c)))
+      updateAll(charsToImport as Character[])
     }
 
-    sortArrayByScore()
+    reapplyLinks()
   }
 
   // --- Actions: Auto-Stratify ---
@@ -545,7 +614,7 @@ export const useCharacterStore = defineStore('characters', () => {
     searchQuery,
     filteredCharacters,
     bulkActionTargetList,
-    sortArrayByScore,
+    sortArray,
     deleteCharacter,
     massDeleteFlagged,
     massFlagVisible,
@@ -555,7 +624,6 @@ export const useCharacterStore = defineStore('characters', () => {
     massLinkAfter,
     massResetMatchCounts,
     getLowestMu,
-    getLowestScore,
     updateAll,
     addNewCharacter,
     absorbAdjacent,
